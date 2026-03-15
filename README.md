@@ -55,3 +55,25 @@ llm-serving-cache/
 ├── tests/
 └── docs/
 ```
+
+## Roadmap
+
+**v0.1**
+- In-memory metadata store
+- Cache entry registration
+- Session routing
+- Node registry
+
+**v0.2**
+- Placement policies
+- Prefix-aware routing
+
+**v0.3**
+- Node failure handling
+
+**v0.4**
+- Persistent metadata backend
+
+## Status
+
+Early prototype.
