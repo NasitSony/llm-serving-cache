@@ -49,11 +49,40 @@ node_id: node-a
 ## Project Structure
 ```bash
 llm-serving-cache/
-├── include/cache/
+├── CMakeLists.txt
+├── README.md
+│
+├── include/
+│   └── cache/
+│       ├── cache_types.h
+│       ├── metadata_store.h
+│       ├── placement_policy.h
+│       ├── router.h
+│       ├── node_registry.h
+│       └── coordinator.h
+│
 ├── src/
+│   ├── metadata_store.cpp
+│   ├── placement_policy.cpp
+│   ├── router.cpp
+│   ├── node_registry.cpp
+│   ├── coordinator.cpp
+│   └── main.cpp
+│
 ├── demos/
+│   ├── cache_register_demo.cpp
+│   ├── routing_demo.cpp
+│   └── node_failure_demo.cpp
+│
 ├── tests/
+│   ├── metadata_store_test.cpp
+│   ├── routing_test.cpp
+│   └── placement_policy_test.cpp
+│
 └── docs/
+    ├── architecture.md
+    ├── api.md
+    └── roadmap.md
 ```
 
 ## Roadmap
