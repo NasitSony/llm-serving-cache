@@ -31,6 +31,29 @@ std::optional<CacheEntry> MetadataStore::FindCacheEntry(
   return it->second;
 }
 
+std::optional<CacheEntry> MetadataStore::FindLongestPrefixMatch(
+    const std::string& model_id,
+    const std::string& request_prefix) const {
+
+  std::optional<CacheEntry> best_match;
+  std::size_t best_length = 0;
+
+  for (const auto& [_, entry] : cache_entries_) {
+    if (entry.model_id != model_id) {
+      continue;
+    }
+
+    if (request_prefix.rfind(entry.prefix_hash, 0) == 0) {
+      if (entry.prefix_hash.size() > best_length) {
+        best_match = entry;
+        best_length = entry.prefix_hash.size();
+      }
+    }
+  }
+
+  return best_match;
+}
+
 bool MetadataStore::AssignSession(const SessionRoute& route) {
   session_routes_[route.session_id] = route;
   return true;

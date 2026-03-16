@@ -21,38 +21,75 @@ int main() {
       "127.0.0.1:9001",
       100,
       0,
-      true};
+      true
+  };
 
   cache::ServingNode node_b{
       "node-b",
       "127.0.0.1:9002",
       100,
       0,
-      true};
+      true
+  };
 
   nodes.RegisterNode(node_a);
   nodes.RegisterNode(node_b);
 
+  // Existing cache for a shorter prefix
   cache::CacheEntry entry{
       "llama-70b",
-      "prefix-123",
+      "hello-my-name",
       "block-1",
       "node-a",
       0,
-      0};
+      0
+  };
 
   coordinator.RegisterCache(entry);
 
-  auto decision = coordinator.RouteRequest(
+  // 1. Exact hit
+  auto exact = coordinator.RouteRequest(
       "session-1",
       "llama-70b",
-      "prefix-123");
+      "hello-my-name"
+  );
 
-  if (decision.has_value()) {
-    std::cout << "Request routed to: " << decision->node_id << "\n";
-    std::cout << "Cache hit: " << (decision->cache_hit ? "yes" : "no") << "\n";
-  } else {
-    std::cout << "No route found\n";
+  if (exact.has_value()) {
+    std::cout << "Exact request routed to: "
+              << exact->node_id << "\n";
+    std::cout << "Cache hit: "
+              << (exact->cache_hit ? "yes" : "no")
+              << "\n";
+  }
+
+  // 2. Longer request prefix -> should reuse shorter cached prefix
+  auto prefix = coordinator.RouteRequest(
+      "session-2",
+      "llama-70b",
+      "hello-my-name-is-nasit"
+  );
+
+  if (prefix.has_value()) {
+    std::cout << "Prefix-match request routed to: "
+              << prefix->node_id << "\n";
+    std::cout << "Cache hit: "
+              << (prefix->cache_hit ? "yes" : "no")
+              << "\n";
+  }
+
+  // 3. Full miss
+  auto miss = coordinator.RouteRequest(
+      "session-3",
+      "llama-70b",
+      "completely-different-prefix"
+  );
+
+  if (miss.has_value()) {
+    std::cout << "Miss request routed to: "
+              << miss->node_id << "\n";
+    std::cout << "Cache hit: "
+              << (miss->cache_hit ? "yes" : "no")
+              << "\n";
   }
 
   return 0;

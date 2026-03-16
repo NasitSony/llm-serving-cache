@@ -10,18 +10,21 @@
 namespace cache {
 
 class Router {
- public:
-  Router(MetadataStore& metadata_store,
-         NodeRegistry& node_registry);
+public:
+    Router(
+        MetadataStore& metadata_store,
+        NodeRegistry& node_registry
+    );
 
-  std::optional<RoutingDecision> RouteRequest(
-      const std::string& session_id,
-      const std::string& model_id,
-      const std::string& prefix_hash);
+    std::optional<RoutingDecision> RouteRequest(
+        const std::string& session_id,
+        const std::string& model_id,
+        const std::string& prefix_hash
+    );
 
- private:
-  MetadataStore& metadata_store_;
-  NodeRegistry& node_registry_;
+private:
+    MetadataStore& metadata_store_;
+    NodeRegistry& node_registry_;
 };
 
-}  // namespace cache
+} // namespace cache
