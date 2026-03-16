@@ -2,26 +2,25 @@
 
 #include <optional>
 #include <string>
-#include <unordered_map>
-#include <vector>
 
-#include "cache/cache_types.h"
+#include "cache/metadata_store.h"
+#include "cache/node_registry.h"
 
 namespace cache {
 
-class NodeRegistry {
+class Router {
  public:
-  bool RegisterNode(const ServingNode& node);
+  Router(MetadataStore& metadata_store,
+         NodeRegistry& node_registry);
 
-  bool MarkNodeUnavailable(const std::string& node_id);
-
-  std::optional<ServingNode> GetNode(
-      const std::string& node_id) const;
-
-  std::vector<ServingNode> ListAvailableNodes() const;
+  std::optional<std::string> RouteRequest(
+      const std::string& session_id,
+      const std::string& model_id,
+      const std::string& prefix_hash);
 
  private:
-  std::unordered_map<std::string, ServingNode> nodes_;
+  MetadataStore& metadata_store_;
+  NodeRegistry& node_registry_;
 };
 
 }  // namespace cache
