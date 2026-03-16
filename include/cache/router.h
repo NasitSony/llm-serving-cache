@@ -3,6 +3,7 @@
 #include <optional>
 #include <string>
 
+#include "cache/cache_types.h"
 #include "cache/metadata_store.h"
 #include "cache/node_registry.h"
 
@@ -13,7 +14,7 @@ class Router {
   Router(MetadataStore& metadata_store,
          NodeRegistry& node_registry);
 
-  std::optional<std::string> RouteRequest(
+  std::optional<RoutingDecision> RouteRequest(
       const std::string& session_id,
       const std::string& model_id,
       const std::string& prefix_hash);

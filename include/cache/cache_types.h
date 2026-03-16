@@ -30,4 +30,9 @@ struct ServingNode {
   bool available{true};
 };
 
+struct RoutingDecision {
+  std::string node_id;
+  bool cache_hit{false};
+};
+
 }  // namespace cache

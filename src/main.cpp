@@ -16,7 +16,6 @@ int main() {
   cache::Router router(metadata, nodes);
   cache::Coordinator coordinator(metadata, nodes, router, placement);
 
-  // Register nodes
   cache::ServingNode node_a{
       "node-a",
       "127.0.0.1:9001",
@@ -34,7 +33,6 @@ int main() {
   nodes.RegisterNode(node_a);
   nodes.RegisterNode(node_b);
 
-  // Register cache entry
   cache::CacheEntry entry{
       "llama-70b",
       "prefix-123",
@@ -45,16 +43,16 @@ int main() {
 
   coordinator.RegisterCache(entry);
 
-  // Route request
-  auto node = coordinator.RouteRequest(
+  auto decision = coordinator.RouteRequest(
       "session-1",
       "llama-70b",
       "prefix-123");
 
-  if (node.has_value()) {
-    std::cout << "Request routed to: " << *node << std::endl;
+  if (decision.has_value()) {
+    std::cout << "Request routed to: " << decision->node_id << "\n";
+    std::cout << "Cache hit: " << (decision->cache_hit ? "yes" : "no") << "\n";
   } else {
-    std::cout << "No route found" << std::endl;
+    std::cout << "No route found\n";
   }
 
   return 0;

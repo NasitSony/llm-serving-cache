@@ -20,7 +20,7 @@ class Coordinator {
 
   bool RegisterCache(const CacheEntry& entry);
 
-  std::optional<std::string> RouteRequest(
+  std::optional<RoutingDecision> RouteRequest(
       const std::string& session_id,
       const std::string& model_id,
       const std::string& prefix_hash);
