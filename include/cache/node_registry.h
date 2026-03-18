@@ -10,19 +10,26 @@
 namespace cache {
 
 class NodeRegistry {
- public:
-  bool RegisterNode(const ServingNode& node);
+public:
+    bool RegisterNode(const ServingNode& node);
 
-  bool MarkNodeUnavailable(const std::string& node_id);
+    bool MarkNodeUnavailable(const std::string& node_id);
 
-  std::optional<ServingNode> GetNode(
-      const std::string& node_id) const;
+    std::optional<ServingNode> GetNode(
+        const std::string& node_id
+    ) const;
 
-  std::vector<ServingNode> ListAvailableNodes() const;
-  std::vector<ServingNode> ListAvailableNodesWithCapacity() const;
+    std::vector<ServingNode> ListAvailableNodes() const;
 
- private:
-  std::unordered_map<std::string, ServingNode> nodes_;
+    std::vector<ServingNode> ListAvailableNodesWithCapacity() const;
+
+    bool IncrementUsedCapacity(
+        const std::string& node_id,
+        int amount
+    );
+
+private:
+    std::unordered_map<std::string, ServingNode> nodes_;
 };
 
-}  // namespace cache
+} // namespace cache
