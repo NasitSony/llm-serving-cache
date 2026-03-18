@@ -73,4 +73,23 @@ bool NodeRegistry::IncrementUsedCapacity(
     return true;
 }
 
+bool NodeRegistry::DecrementUsedCapacity(
+    const std::string& node_id,
+    int amount
+) {
+    auto it = nodes_.find(node_id);
+
+    if (it == nodes_.end()) {
+        return false;
+    }
+
+    it->second.used_capacity -= amount;
+
+    if (it->second.used_capacity < 0) {
+        it->second.used_capacity = 0;
+    }
+
+    return true;
+}
+
 } // namespace cache

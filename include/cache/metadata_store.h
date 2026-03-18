@@ -24,6 +24,7 @@ class MetadataStore {
 
   std::optional<SessionRoute> GetSessionRoute(
       const std::string& session_id) const;
+  std::optional<CacheEntry> EvictOne(const std::string& node_id);    
 
  private:
   std::unordered_map<std::string, CacheEntry> cache_entries_;

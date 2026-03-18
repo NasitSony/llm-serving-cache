@@ -80,4 +80,31 @@ std::optional<SessionRoute> MetadataStore::GetSessionRoute(
   return it->second;
 }
 
+std::optional<CacheEntry> MetadataStore::EvictOne(
+    const std::string& node_id
+) {
+    std::string victim_key;
+    std::uint64_t oldest = UINT64_MAX;
+    std::optional<CacheEntry> victim_entry;
+
+    for (const auto& [key, entry] : cache_entries_) {
+        if (entry.node_id != node_id) {
+            continue;
+        }
+
+        if (entry.last_access_ms < oldest) {
+            oldest = entry.last_access_ms;
+            victim_key = key;
+            victim_entry = entry;
+        }
+    }
+
+    if (!victim_entry.has_value()) {
+        return std::nullopt;
+    }
+
+    cache_entries_.erase(victim_key);
+    return victim_entry;
+}
+
 }  // namespace cache

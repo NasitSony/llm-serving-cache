@@ -68,8 +68,10 @@ std::optional<RoutingDecision> Router::RouteRequest(
     }
 
     // 4. Cache miss → choose available node
-   // 4. Full miss → choose least-loaded node
-auto nodes = node_registry_.ListAvailableNodesWithCapacity();
+// 4. Full miss → choose least-loaded available node
+auto nodes = node_registry_.ListAvailableNodes();
+
+
 
 if (nodes.empty()) {
     return std::nullopt;
@@ -81,6 +83,14 @@ ServingNode best = nodes.front();
 for (const auto& node : nodes) {
     if (node.used_capacity < best.used_capacity) {
         best = node;
+    }
+}
+
+if (best.used_capacity >= best.capacity) {
+    auto evicted = metadata_store_.EvictOne(best.node_id);
+
+    if (evicted.has_value()) {
+        node_registry_.DecrementUsedCapacity(best.node_id, 1);
     }
 }
 

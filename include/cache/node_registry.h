@@ -28,6 +28,11 @@ public:
         int amount
     );
 
+    bool DecrementUsedCapacity(
+        const std::string& node_id,
+        int amount
+    );
+
 private:
     std::unordered_map<std::string, ServingNode> nodes_;
 };
