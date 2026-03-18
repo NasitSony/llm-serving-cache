@@ -36,19 +36,85 @@ Tracks:
 Maintains: 
 
 ```bash
-- available serving nodes
-- capacity and utilization
-- node liveness
+• available serving nodes
+• capacity and utilization
+• node liveness
 ```
 
 ### Router
-Routes incoming inference requests to the correct node based on cache metadata.
+
+Responsible for request routing:
+
+```bash
+exact cache hit        → reuse cached result
+prefix match           → reuse partial computation
+cache miss             → select node + trigger cache fill
+```
+
+### Coordinator
+
+Orchestrates control-plane operations:
+
+```bash
+• cache registration
+• node capacity updates
+• routing delegation
+• lifecycle management
+```
 
 ### Placement Policy
-Determines where new cache blocks should be stored.
 
-## Example Metadata
-Example cache entry:
+Determines where new cache blocks are placed:
+
+```bash
+• least-loaded node selection
+• capacity-aware routing
+```
+
+# 🔁 Cache Lifecycle
+
+```bash
+Client Request
+      ↓
+Router
+      ↓
+Session Affinity (if exists)
+      ↓
+Exact Cache Hit?
+      ↓
+Prefix Match?
+      ↓
+Cache Miss
+      ↓
+Node Selection (least-loaded)
+      ↓
+[If full] Evict old cache entry
+      ↓
+Route request to node
+      ↓
+Inference completes
+      ↓
+Register new cache entry
+      ↓
+Update node capacity
+```
+
+# ✨ Features Implemented
+
+```bash
+✔ Exact cache lookup
+✔ Longest-prefix cache reuse
+✔ Session-affinity routing
+✔ Metadata-driven control plane
+✔ Cache fill after miss
+✔ Node capacity tracking
+✔ Capacity-aware routing
+✔ Eviction when node is full (LRU-style via access time)
+```
+
+# 📦 Example Metadata
+
+### Cache Entry
 
 ```bash
 model_id: llama-70b
@@ -56,8 +122,7 @@ prefix_hash: 9fa21ab
 block_id: block-134
 node_id: node-a
 ```
-
-Example session route:
+### Session Route
 
 ```bash
 session_id: sess-101
@@ -65,7 +130,8 @@ model_id: llama-70b
 node_id: node-a
 ```
 
-## Project Structure
+# 🧱 Project Structure
+
 ```bash
 llm-serving-cache/
 ├── CMakeLists.txt
@@ -104,24 +170,74 @@ llm-serving-cache/
     └── roadmap.md
 ```
 
-## Roadmap
+# 🧪 Example Output
 
-**v0.1**
-- In-memory metadata store
-- Cache entry registration
-- Session routing
-- Node registry
+```bash
+Exact request routed to: node-a
+Cache hit: yes
 
-**v0.2**
-- Placement policies
-- Prefix-aware routing
+Prefix-match request routed to: node-a
+Cache hit: yes
 
-**v0.3**
-- Node failure handling
+Miss request routed to: node-b
+Cache hit: no
 
-**v0.4**
-- Persistent metadata backend
+Registered new cache entry on: node-b
+node-b used_capacity: 1/1
 
-## Status
+After fill routed to: node-b
+Cache hit: yes
 
-Early prototype.
+Evicted cache block from node: node-b
+```
+
+# 🗺️ Roadmap
+
+### v0.1
+
+```bash
+• In-memory metadata store
+• Cache entry registration
+• Session routing
+• Node registry
+```
+
+### v0.2
+
+```bash
+• Prefix-aware routing
+• Placement policies
+```
+
+### v0.3
+
+```bash
+• Node capacity tracking
+• Cache lifecycle management
+• Eviction policy
+```
+
+### v0.4 (Next)
+
+```bash
+• Persistent metadata backend
+• Distributed control plane (Raft-based)
+```
+
+# 🎯 Why This Matters
+
+This project models a ***real LLM serving control plane***, focusing on:
+
+```bash
+• reducing redundant inference computation
+• maximizing cache reuse across nodes
+• maintaining consistency in distributed serving
+• handling resource constraints safely
+```
+
+# 📌 Status
+
+```bash
+Prototype complete (v0.3)
+Ready for extension into distributed / persistent control plane
+```
