@@ -97,20 +97,24 @@ Inference completes
 Register new cache entry
       ↓
 Update node capacity
+      ↓
+KV-backed Metadata Store (WAL)
 ```
 
 # ✨ Features Implemented
 
 ```bash
-✔ Exact cache lookup
-✔ Longest-prefix cache reuse
-✔ Session-affinity routing
-✔ Metadata-driven control plane
-✔ Cache fill after miss
-✔ Node capacity tracking
-✔ Capacity-aware routing
-✔ Eviction when node is full (LRU-style via access time)
+- ✅ Exact cache lookup
+- ✅ Longest-prefix cache reuse
+- ✅ Session-affinity routing
+- ✅ Cache fill after miss
+- ✅ Node capacity tracking
+- ✅ Capacity-aware placement
+- ✅ Eviction on full node (LRU-style via access time)
+- ✅ WAL-backed persistent metadata
+- ✅ Crash recovery via deterministic WAL replay
 ```
+---
 
 # 📦 Example Metadata
 
@@ -193,53 +197,74 @@ Evicted cache block from node: node-b
 
 # 🗺️ Roadmap
 
-### v0.1
+### v0.1 — In-Memory Control Plane
 
 ```bash
 • In-memory metadata store
-• Cache entry registration
+• Cache registration
 • Session routing
 • Node registry
 ```
 
-### v0.2
+### v0.2 — Routing & Cache Reuse
 
 ```bash
+• Exact cache hits
 • Prefix-aware routing
-• Placement policies
+• Session-affinity routing
+• Cache fill after miss
 ```
 
-### v0.3
+### v0.3 — Capacity & Eviction
 
 ```bash
 • Node capacity tracking
-• Cache lifecycle management
-• Eviction policy
+• Capacity-aware placement
+• Eviction on full nodes
+• Complete cache lifecycle
 ```
 
 ### v0.4 — Persistent Metadata Backend
 
 ```bash
-• Replaced in-memory metadata with KV-backed storage
-• Persisted cache metadata and session routes in KV Shuttle
-• Verified crash recovery through WAL replay across restarts
-• Enabled deterministic reconstruction of control-plane state
+• KV-backed metadata store using KV Shuttle
+• WAL-based durability for cache and session metadata
+• Crash recovery via WAL replay
+• Deterministic reconstruction after restart
+```
+
+### v0.5 — Distributed Control Plane (Future)
+
+```bash
+• Raft-backed metadata replication
+• Leader-based coordination
+• Fault-tolerant cache placement decisions
 ```
 
 # 🎯 Why This Matters
 
-This project models a ***real LLM serving control plane***, focusing on:
+This project models a **real AI inference control plane**, focusing on:
 
 ```bash
 • reducing redundant inference computation
 • maximizing cache reuse across nodes
-• maintaining consistency in distributed serving
-• handling resource constraints safely
+• ensuring correctness under failure
+• maintaining consistent distributed state
 ```
 
 # 📌 Status
 
 ```bash
-Prototype complete (v0.3)
-Ready for extension into distributed / persistent control plane
+v0.4 complete — persistent, crash-consistent control plane prototype
+```
+
+
+---
+
+# 🔗 Related Work
+
+This project builds on:
+
+```bash
+- KV Shuttle — WAL-based, crash-consistent KV storage engine with Raft replication
 ```
