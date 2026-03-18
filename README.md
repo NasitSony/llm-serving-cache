@@ -217,11 +217,13 @@ Evicted cache block from node: node-b
 • Eviction policy
 ```
 
-### v0.4 (Next)
+### v0.4 — Persistent Metadata Backend
 
 ```bash
-• Persistent metadata backend
-• Distributed control plane (Raft-based)
+• Replaced in-memory metadata with KV-backed storage
+• Persisted cache metadata and session routes in KV Shuttle
+• Verified crash recovery through WAL replay across restarts
+• Enabled deterministic reconstruction of control-plane state
 ```
 
 # 🎯 Why This Matters
