@@ -19,6 +19,7 @@ class NodeRegistry {
       const std::string& node_id) const;
 
   std::vector<ServingNode> ListAvailableNodes() const;
+  std::vector<ServingNode> ListAvailableNodesWithCapacity() const;
 
  private:
   std::unordered_map<std::string, ServingNode> nodes_;

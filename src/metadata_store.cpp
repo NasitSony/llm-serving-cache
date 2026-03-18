@@ -19,7 +19,7 @@ bool MetadataStore::RegisterCacheEntry(const CacheEntry& entry) {
 
 std::optional<CacheEntry> MetadataStore::FindCacheEntry(
     const std::string& model_id,
-    const std::string& prefix_hash) const {
+    const std::string& prefix_hash) {
 
   const std::string key = MakeCacheKey(model_id, prefix_hash);
 
@@ -28,30 +28,40 @@ std::optional<CacheEntry> MetadataStore::FindCacheEntry(
     return std::nullopt;
   }
 
+  // Update access time here
+  it->second.last_access_ms++;
+
   return it->second;
 }
 
 std::optional<CacheEntry> MetadataStore::FindLongestPrefixMatch(
     const std::string& model_id,
-    const std::string& request_prefix) const {
+    const std::string& request_prefix) {
 
-  std::optional<CacheEntry> best_match;
-  std::size_t best_length = 0;
+    CacheEntry* best_match = nullptr;
+    std::size_t best_length = 0;
 
-  for (const auto& [_, entry] : cache_entries_) {
-    if (entry.model_id != model_id) {
-      continue;
+    for (auto& [_, entry] : cache_entries_) {
+        if (entry.model_id != model_id) {
+            continue;
+        }
+
+        if (request_prefix.rfind(entry.prefix_hash, 0) == 0) {
+            if (entry.prefix_hash.size() > best_length) {
+                best_match = &entry;
+                best_length = entry.prefix_hash.size();
+            }
+        }
     }
 
-    if (request_prefix.rfind(entry.prefix_hash, 0) == 0) {
-      if (entry.prefix_hash.size() > best_length) {
-        best_match = entry;
-        best_length = entry.prefix_hash.size();
-      }
+    if (best_match == nullptr) {
+        return std::nullopt;
     }
-  }
 
-  return best_match;
+    // Update access time here
+    best_match->last_access_ms++;
+
+    return *best_match;
 }
 
 bool MetadataStore::AssignSession(const SessionRoute& route) {

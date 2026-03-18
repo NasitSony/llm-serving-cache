@@ -68,25 +68,37 @@ std::optional<RoutingDecision> Router::RouteRequest(
     }
 
     // 4. Cache miss → choose available node
-    auto nodes = node_registry_.ListAvailableNodes();
+   // 4. Full miss → choose least-loaded node
+auto nodes = node_registry_.ListAvailableNodesWithCapacity();
 
-    if (nodes.empty()) {
-        return std::nullopt;
+if (nodes.empty()) {
+    return std::nullopt;
+}
+
+// pick least-loaded node
+ServingNode best = nodes.front();
+
+for (const auto& node : nodes) {
+    if (node.used_capacity < best.used_capacity) {
+        best = node;
     }
+}
 
-    SessionRoute route;
-    route.session_id = session_id;
-    route.model_id   = model_id;
-    route.node_id    = nodes.front().node_id;
-    route.status     = "active";
+// assign session
+SessionRoute route;
+route.session_id = session_id;
+route.model_id   = model_id;
+route.node_id    = best.node_id;
+route.status     = "active";
 
-    metadata_store_.AssignSession(route);
+metadata_store_.AssignSession(route);
 
-    RoutingDecision decision;
-    decision.node_id   = nodes.front().node_id;
-    decision.cache_hit = false;
+// return decision
+RoutingDecision decision;
+decision.node_id   = best.node_id;
+decision.cache_hit = false;
 
-    return decision;
+return decision;
 }
 
 } // namespace cache

@@ -14,11 +14,11 @@ class MetadataStore {
 
   std::optional<CacheEntry> FindCacheEntry(
       const std::string& model_id,
-      const std::string& prefix_hash) const;
+      const std::string& prefix_hash) ;
 
   std::optional<CacheEntry> FindLongestPrefixMatch(
       const std::string& model_id,
-      const std::string& request_prefix) const;
+      const std::string& request_prefix) ;
 
   bool AssignSession(const SessionRoute& route);
 

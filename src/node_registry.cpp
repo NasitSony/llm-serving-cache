@@ -43,4 +43,16 @@ std::vector<ServingNode> NodeRegistry::ListAvailableNodes() const {
   return result;
 }
 
+std::vector<ServingNode> NodeRegistry::ListAvailableNodesWithCapacity() const {
+    std::vector<ServingNode> result;
+
+    for (const auto& [_, node] : nodes_) {
+        if (node.available && node.used_capacity < node.capacity) {
+            result.push_back(node);
+        }
+    }
+
+    return result;
+}
+
 }  // namespace cache
