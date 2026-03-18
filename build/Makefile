@@ -130,6 +130,19 @@ llm_serving_cache/fast:
 .PHONY : llm_serving_cache/fast
 
 #=============================================================================
+# Target rules for targets named llm_serving_cache_persistent
+
+# Build rule for target.
+llm_serving_cache_persistent: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 llm_serving_cache_persistent
+.PHONY : llm_serving_cache_persistent
+
+# fast build rule for target.
+llm_serving_cache_persistent/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/llm_serving_cache_persistent.dir/build.make CMakeFiles/llm_serving_cache_persistent.dir/build
+.PHONY : llm_serving_cache_persistent/fast
+
+#=============================================================================
 # Target rules for targets named kv_store
 
 # Build rule for target.
@@ -296,6 +309,30 @@ src/coordinator.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/llm_serving_cache.dir/build.make CMakeFiles/llm_serving_cache.dir/src/coordinator.cpp.s
 .PHONY : src/coordinator.cpp.s
 
+src/kv_metadata_store.o: src/kv_metadata_store.cpp.o
+.PHONY : src/kv_metadata_store.o
+
+# target to build an object file
+src/kv_metadata_store.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/llm_serving_cache_persistent.dir/build.make CMakeFiles/llm_serving_cache_persistent.dir/src/kv_metadata_store.cpp.o
+.PHONY : src/kv_metadata_store.cpp.o
+
+src/kv_metadata_store.i: src/kv_metadata_store.cpp.i
+.PHONY : src/kv_metadata_store.i
+
+# target to preprocess a source file
+src/kv_metadata_store.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/llm_serving_cache_persistent.dir/build.make CMakeFiles/llm_serving_cache_persistent.dir/src/kv_metadata_store.cpp.i
+.PHONY : src/kv_metadata_store.cpp.i
+
+src/kv_metadata_store.s: src/kv_metadata_store.cpp.s
+.PHONY : src/kv_metadata_store.s
+
+# target to generate assembly for a file
+src/kv_metadata_store.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/llm_serving_cache_persistent.dir/build.make CMakeFiles/llm_serving_cache_persistent.dir/src/kv_metadata_store.cpp.s
+.PHONY : src/kv_metadata_store.cpp.s
+
 src/main.o: src/main.cpp.o
 .PHONY : src/main.o
 
@@ -319,6 +356,30 @@ src/main.s: src/main.cpp.s
 src/main.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/llm_serving_cache.dir/build.make CMakeFiles/llm_serving_cache.dir/src/main.cpp.s
 .PHONY : src/main.cpp.s
+
+src/main_persistent.o: src/main_persistent.cpp.o
+.PHONY : src/main_persistent.o
+
+# target to build an object file
+src/main_persistent.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/llm_serving_cache_persistent.dir/build.make CMakeFiles/llm_serving_cache_persistent.dir/src/main_persistent.cpp.o
+.PHONY : src/main_persistent.cpp.o
+
+src/main_persistent.i: src/main_persistent.cpp.i
+.PHONY : src/main_persistent.i
+
+# target to preprocess a source file
+src/main_persistent.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/llm_serving_cache_persistent.dir/build.make CMakeFiles/llm_serving_cache_persistent.dir/src/main_persistent.cpp.i
+.PHONY : src/main_persistent.cpp.i
+
+src/main_persistent.s: src/main_persistent.cpp.s
+.PHONY : src/main_persistent.s
+
+# target to generate assembly for a file
+src/main_persistent.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/llm_serving_cache_persistent.dir/build.make CMakeFiles/llm_serving_cache_persistent.dir/src/main_persistent.cpp.s
+.PHONY : src/main_persistent.cpp.s
 
 src/metadata_store.o: src/metadata_store.cpp.o
 .PHONY : src/metadata_store.o
@@ -430,6 +491,7 @@ help:
 	@echo "... kv_server"
 	@echo "... kv_store"
 	@echo "... llm_serving_cache"
+	@echo "... llm_serving_cache_persistent"
 	@echo "... object_store_demo"
 	@echo "... object_store_gc_demo"
 	@echo "... object_store_list_demo"
@@ -439,9 +501,15 @@ help:
 	@echo "... src/coordinator.o"
 	@echo "... src/coordinator.i"
 	@echo "... src/coordinator.s"
+	@echo "... src/kv_metadata_store.o"
+	@echo "... src/kv_metadata_store.i"
+	@echo "... src/kv_metadata_store.s"
 	@echo "... src/main.o"
 	@echo "... src/main.i"
 	@echo "... src/main.s"
+	@echo "... src/main_persistent.o"
+	@echo "... src/main_persistent.i"
+	@echo "... src/main_persistent.s"
 	@echo "... src/metadata_store.o"
 	@echo "... src/metadata_store.i"
 	@echo "... src/metadata_store.s"

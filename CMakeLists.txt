@@ -20,6 +20,13 @@ add_executable(llm_serving_cache
 )
 
 
+add_executable(llm_serving_cache_persistent
+    src/main_persistent.cpp
+    src/kv_metadata_store.cpp
+)
+
+target_link_libraries(llm_serving_cache_persistent PRIVATE kv_store)
+
 add_subdirectory(third_party/veristore)
 
 # Link the storage engine library

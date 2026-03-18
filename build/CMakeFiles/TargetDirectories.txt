@@ -1,4 +1,5 @@
 /Users/nasit/dev/llm-serving-cache/build/CMakeFiles/llm_serving_cache.dir
+/Users/nasit/dev/llm-serving-cache/build/CMakeFiles/llm_serving_cache_persistent.dir
 /Users/nasit/dev/llm-serving-cache/build/CMakeFiles/edit_cache.dir
 /Users/nasit/dev/llm-serving-cache/build/CMakeFiles/rebuild_cache.dir
 /Users/nasit/dev/llm-serving-cache/build/third_party/veristore/CMakeFiles/kv_store.dir
