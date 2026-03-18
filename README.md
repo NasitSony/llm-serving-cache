@@ -1,26 +1,45 @@
-# LLM Serving Cache
+# 🚀 LLM Serving Cache
 
-A lightweight **metadata and control-plane service for LLM KV-cache placement and routing**.
+A lightweight **control-plane service for LLM KV-cache placement and routing.**
 
-This project tracks where cached attention prefixes are stored across inference nodes and routes requests to maximize cache reuse and reduce recomputation.
+This system tracks where cached attention prefixes live across distributed inference nodes and routes requests to **maximize cache reuse and minimize recomputation.**
 
-## Motivation
+# 🧠 Motivation
 
-Large language model inference benefits significantly from **KV-cache reuse**.
-However, in distributed serving environments it is necessary to track:
-- where cached prefixes are stored
-- which nodes hold cache blocks
-- how to route sessions to the correct node
+Large Language Model inference can be significantly accelerated through **KV-cache reuse.**
 
-This system provides a **centralized metadata layer** for managing KV-cache placement and routing decisions.
+In distributed serving systems, this introduces key challenges:
 
-## Core Components
+```bash
+• Where are cached prefixes stored?
+• Which nodes hold reusable KV blocks?
+• How should requests be routed for maximum reuse?
+• How do we avoid redundant recomputation?
+```
+
+This project implements a **centralized metadata-driven control plane** to solve these problems.
+
+# ⚙️ Core Components
 
 ### Metadata Store
-Tracks cached KV blocks and session routes.
+
+Tracks:
+
+```bash
+• cache entries (prefix → node mapping)
+• session routing decisions
+• cache access patterns (for eviction)
+```
 
 ### Node Registry
-Maintains a registry of available serving nodes.
+
+Maintains: 
+
+```bash
+- available serving nodes
+- capacity and utilization
+- node liveness
+```
 
 ### Router
 Routes incoming inference requests to the correct node based on cache metadata.
