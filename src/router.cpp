@@ -1,5 +1,5 @@
 #include "cache/router.h"
-
+#include <iostream>
 namespace cache {
 
 Router::Router(
@@ -91,6 +91,8 @@ if (best.used_capacity >= best.capacity) {
 
     if (evicted.has_value()) {
         node_registry_.DecrementUsedCapacity(best.node_id, 1);
+        std::cout << "Evicted cache block from node: "
+                      << best.node_id << "\n";
     }
 }
 

@@ -19,15 +19,15 @@ int main() {
   cache::ServingNode node_a{
       "node-a",
       "127.0.0.1:9001",
-      100,
-      0,
+      1,
+      1,
       true
   };
 
   cache::ServingNode node_b{
       "node-b",
       "127.0.0.1:9002",
-      100,
+      1,
       0,
       true
   };
@@ -132,6 +132,44 @@ int main() {
               << (after_fill->cache_hit ? "yes" : "no")
               << "\n";
    }
+
+   auto force_evict = coordinator.RouteRequest(
+    "session-5",
+    "llama-70b",
+    "another-new-prefix"
+);
+
+if (force_evict.has_value()) {
+    std::cout << "Eviction test routed to: "
+              << force_evict->node_id << "\n";
+
+    std::cout << "Cache hit: "
+              << (force_evict->cache_hit ? "yes" : "no")
+              << "\n";
+
+    if (!force_evict->cache_hit) {
+        cache::CacheEntry evicted_fill{
+            "llama-70b",
+            "another-new-prefix",
+            "block-3",
+            force_evict->node_id,
+            0,
+            0
+        };
+
+        coordinator.RegisterCache(evicted_fill);
+
+        std::cout << "Registered new cache entry for eviction test on: "
+                  << force_evict->node_id << "\n";
+
+        auto node_state = nodes.GetNode(force_evict->node_id);
+        if (node_state.has_value()) {
+            std::cout << force_evict->node_id << " used_capacity: "
+                      << node_state->used_capacity << "/"
+                      << node_state->capacity << "\n";
+        }
+    }
+}
 
   return 0;
 }
