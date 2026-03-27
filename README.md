@@ -19,6 +19,19 @@ In distributed serving systems, this introduces key challenges:
 
 This project implements a **centralized metadata-driven control plane** to solve these problems.
 
+
+## 🔗 Part of the Veri* AI Infrastructure Stack
+
+llm-serving-cache is the **inference serving layer** of a layered AI infrastructure stack:
+
+| Layer | Project | Role |
+|-------|---------|------|
+| Storage | [VeriStore](https://github.com/NasitSony/VeriStore) | WAL durability, crash recovery, Raft replication, object storage |
+| Inference Serving | **llm-serving-cache** (this project) | KV-cache placement and routing control plane, backed by VeriStore |
+| Workload Orchestration | [Veriflow](https://github.com/NasitSony/Veriflow) | GPU-aware scheduler for training, inference, and evaluation jobs |
+
+This project depends on **VeriStore** ([github.com/NasitSony/VeriStore](https://github.com/NasitSony/VeriStore)) as its durable metadata backend — all cache entries, session routes, and node registry state are persisted using VeriStore's WAL-backed KV engine, inheriting its crash-consistency and deterministic recovery guarantees.
+
 # ⚙️ Core Components
 
 ### Metadata Store
