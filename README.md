@@ -266,5 +266,6 @@ v0.4 complete — persistent, crash-consistent control plane prototype
 This project builds on:
 
 ```bash
-- KV Shuttle — WAL-based, crash-consistent KV storage engine with Raft replication
+- - VeriStore — WAL-based, crash-consistent KV storage engine with Raft replication
+  https://github.com/NasitSony/VeriStore
 ```
