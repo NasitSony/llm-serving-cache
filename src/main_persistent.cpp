@@ -4,6 +4,10 @@
 #include "cache/kv_metadata_store.h"
 #include "kv/kv_store.h"
 
+static int estimate_kv_cache_mb(int tokens) {
+    return tokens / 10;
+}
+
 int main() {
     kv::KVStore kv_store;
 
@@ -23,7 +27,8 @@ int main() {
         "block-1",
         "node-a",
         1,
-        1
+        1,
+        estimate_kv_cache_mb(1000)
     };
 
     if (!metadata.RegisterCacheEntry(cache_entry)) {

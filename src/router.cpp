@@ -109,17 +109,29 @@ std::optional<RoutingDecision> Router::RouteRequest(
     }
 
     if (best.used_capacity >= best.capacity) {
-        auto evicted = metadata_store_.EvictOne(best.node_id);
+    auto evicted = metadata_store_.EvictOne(best.node_id);
 
-        if (evicted.has_value()) {
-            node_registry_.DecrementUsedCapacity(best.node_id, 1);
-            std::cout << "Evicted cache block from node: "
-                      << best.node_id << "\n";
-        } else {
-            std::cout << "Rejected request: node full and nothing to evict\n";
-            return std::nullopt;
+    if (evicted.has_value()) {
+        node_registry_.DecrementUsedCapacity(best.node_id, 1);
+        node_registry_.DecrementUsedVram(best.node_id, evicted->kv_size_mb);
+
+        std::cout << "Evicted cache block from node: "
+                  << best.node_id
+                  << " freed_kv_mb=" << evicted->kv_size_mb
+                  << "\n";
+
+        auto node_state = node_registry_.GetNode(best.node_id);
+        if (node_state.has_value()) {
+            std::cout << best.node_id << " used_vram_mb: "
+                      << node_state->used_vram_mb << "/"
+                      << node_state->total_vram_mb << "\n";
         }
+    } else {
+        std::cout << "Rejected request: node full and nothing to evict\n";
+        return std::nullopt;
     }
+   }
+
 
     std::cout << "Selected node: " << best.node_id
               << " gpu=" << best.gpu_type

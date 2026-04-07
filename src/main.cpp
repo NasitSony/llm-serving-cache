@@ -7,6 +7,10 @@
 #include "cache/placement_policy.h"
 #include "cache/router.h"
 
+static int estimate_kv_cache_mb(int tokens) {
+    return tokens / 10;
+}
+
 int main() {
 
   cache::MetadataStore metadata;
@@ -48,7 +52,8 @@ int main() {
       "block-1",
       "node-a",
       0,
-      0
+      0,
+      estimate_kv_cache_mb(1000)
   };
 
   coordinator.RegisterCache(entry);
@@ -108,14 +113,31 @@ int main() {
             "block-2",
             miss->node_id,
             0,
-            0
+            0,
+            estimate_kv_cache_mb(1000)
         };
 
         coordinator.RegisterCache(new_entry);
 
         std::cout << "Registered new cache entry on: "
                   << miss->node_id << "\n";
-       }
+
+        nodes.IncrementUsedVram(
+            miss->node_id,
+            new_entry.kv_size_mb
+        );
+
+       
+
+
+        auto node_state = nodes.GetNode(miss->node_id);
+        if (node_state.has_value()) {
+             std::cout << miss->node_id << " used_vram_mb: "
+              << node_state->used_vram_mb << "/"
+              << node_state->total_vram_mb << "\n";
+            }          
+        }
+        
        auto node_b_state = nodes.GetNode("node-b");
 
        if (node_b_state.has_value()) {
@@ -165,7 +187,8 @@ if (force_evict.has_value()) {
             "block-3",
             force_evict->node_id,
             0,
-            0
+            0,
+            estimate_kv_cache_mb(1000)
         };
 
         coordinator.RegisterCache(evicted_fill);

@@ -33,6 +33,9 @@ public:
         int amount
     );
 
+    bool IncrementUsedVram(const std::string& node_id, int mb);
+    bool DecrementUsedVram(const std::string& node_id, int mb);
+
 private:
     std::unordered_map<std::string, ServingNode> nodes_;
 };

@@ -13,6 +13,8 @@ struct CacheEntry {
 
     std::uint64_t created_at_ms{0};
     std::uint64_t last_access_ms{0};
+
+    int kv_size_mb{0};
 };
 
 struct SessionRoute {
