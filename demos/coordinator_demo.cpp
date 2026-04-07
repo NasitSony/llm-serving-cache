@@ -20,7 +20,9 @@ std::optional<std::string> Coordinator::RouteRequest(
     const std::string& model_id,
     const std::string& prefix_hash) {
 
-  return router_.RouteRequest(session_id, model_id, prefix_hash);
+
+  int tokens = 1000; // mock value
+  return router_.RouteRequest(session_id, model_id, prefix_hash, tokens);
 }
 
 }  // namespace cache

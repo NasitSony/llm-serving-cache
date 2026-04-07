@@ -29,7 +29,15 @@ struct ServingNode {
     int capacity{0};
     int used_capacity{0};
 
+    std::string gpu_type;
+    int total_vram_mb{0};
+    int used_vram_mb{0};
+
     bool available{true};
+
+    int available_vram_mb() const {
+        return total_vram_mb - used_vram_mb;
+    }
 };
 
 struct RoutingDecision {

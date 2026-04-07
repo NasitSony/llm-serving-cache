@@ -21,6 +21,9 @@ int main() {
       "127.0.0.1:9001",
       1,
       1,
+      "A100",
+      1000,
+      700,
       true
   };
 
@@ -29,6 +32,9 @@ int main() {
       "127.0.0.1:9002",
       1,
       0,
+      "L4",
+      500,
+      450,
       true
   };
 
@@ -51,7 +57,8 @@ int main() {
   auto exact = coordinator.RouteRequest(
       "session-1",
       "llama-70b",
-      "hello-my-name"
+      "hello-my-name",
+      100
   );
 
   if (exact.has_value()) {
@@ -66,7 +73,8 @@ int main() {
   auto prefix = coordinator.RouteRequest(
       "session-2",
       "llama-70b",
-      "hello-my-name-is-nasit"
+      "hello-my-name-is-nasit",
+      100
   );
 
   if (prefix.has_value()) {
@@ -81,7 +89,8 @@ int main() {
   auto miss = coordinator.RouteRequest(
       "session-3",
       "llama-70b",
-      "completely-different-prefix"
+      "completely-different-prefix",
+      1000
   );
 
   if (miss.has_value()) {
@@ -121,7 +130,8 @@ int main() {
    auto after_fill = coordinator.RouteRequest(
       "session-4",
       "llama-70b",
-      "completely-different-prefix"
+      "completely-different-prefix",
+      5000
    );
 
    if (after_fill.has_value()) {
@@ -136,7 +146,8 @@ int main() {
    auto force_evict = coordinator.RouteRequest(
     "session-5",
     "llama-70b",
-    "another-new-prefix"
+    "another-new-prefix",
+    10000
 );
 
 if (force_evict.has_value()) {

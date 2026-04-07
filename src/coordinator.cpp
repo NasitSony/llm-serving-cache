@@ -31,9 +31,10 @@ bool Coordinator::RegisterCache(const CacheEntry& entry) {
 std::optional<RoutingDecision> Coordinator::RouteRequest(
     const std::string& session_id,
     const std::string& model_id,
-    const std::string& prefix_hash
+    const std::string& prefix_hash,
+    int tokens
 ) {
-    return router_.RouteRequest(session_id, model_id, prefix_hash);
+    return router_.RouteRequest(session_id, model_id, prefix_hash,tokens);
 }
 
 } // namespace cache

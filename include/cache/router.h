@@ -19,7 +19,9 @@ public:
     std::optional<RoutingDecision> RouteRequest(
         const std::string& session_id,
         const std::string& model_id,
-        const std::string& prefix_hash
+        const std::string& prefix_hash,
+         int tokens
+
     );
 
 private:
