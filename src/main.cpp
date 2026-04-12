@@ -122,10 +122,12 @@ int main() {
         std::cout << "Registered new cache entry on: "
                   << miss->node_id << "\n";
 
-        nodes.IncrementUsedVram(
-            miss->node_id,
-            new_entry.kv_size_mb
-        );
+       
+       // manual vram entry is removed
+       // nodes.IncrementUsedVram(
+         //   miss->node_id,
+          //  new_entry.kv_size_mb
+       // );
 
        
 
@@ -137,7 +139,7 @@ int main() {
               << node_state->total_vram_mb << "\n";
             }          
         }
-        
+
        auto node_b_state = nodes.GetNode("node-b");
 
        if (node_b_state.has_value()) {

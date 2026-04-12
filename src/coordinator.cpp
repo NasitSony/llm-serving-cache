@@ -16,14 +16,13 @@ Coordinator::Coordinator(
 }
 
 bool Coordinator::RegisterCache(const CacheEntry& entry) {
-    const bool ok = metadata_.RegisterCacheEntry(entry);
-
+    bool ok = metadata_.RegisterCacheEntry(entry);
     if (!ok) {
         return false;
     }
 
-    // Simulate each cache block consuming 1 unit of capacity
     nodes_.IncrementUsedCapacity(entry.node_id, 1);
+    nodes_.IncrementUsedVram(entry.node_id, entry.kv_size_mb);
 
     return true;
 }
