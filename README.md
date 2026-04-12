@@ -84,6 +84,16 @@ Determines where new cache blocks are placed:
 • capacity-aware routing
 ```
 
+### GPU-Aware KV Cache Management
+
+```bash
+• KV cache size estimated per request
+• routing constrained by GPU memory
+• cache allocation consumes VRAM
+• eviction reclaims VRAM
+• requests rejected when memory insufficient
+```bash
+
 # 🔁 Cache Lifecycle
 
 ```bash
