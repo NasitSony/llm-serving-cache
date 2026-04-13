@@ -44,6 +44,25 @@ InferenceResult SimulateInference(const InferenceRequest& req) {
         total_latency_ms
     };
 }
+
+
+int ComputePrefixHitTokens(
+    bool cache_hit,
+    bool is_prefix,
+    int prompt_tokens
+) {
+    if (!cache_hit) {
+        return 0;
+    }
+
+    if (is_prefix) {
+        return prompt_tokens * 0.7;  // simulate partial reuse
+    }
+
+    // exact hit
+    return prompt_tokens;
+}
+
 int main() {
 
   cache::MetadataStore metadata;
@@ -133,13 +152,22 @@ cache::ServingNode node_b{
               << (prefix->cache_hit ? "yes" : "no")
               << "\n";
 
+    int prompt_tokens = 1200;
 
-    InferenceRequest req{
-        "req-prefix",
-        1200,
-        200,
-        800   // reused prefix
-    };
+int reused = ComputePrefixHitTokens(
+    prefix->cache_hit,
+    true,  // prefix case
+    prompt_tokens
+);
+
+InferenceRequest req{
+    "req-prefix",
+    prompt_tokens,
+    200,
+    reused
+};
+
+   
 
     auto res = SimulateInference(req);
 
@@ -163,12 +191,21 @@ cache::ServingNode node_b{
               << miss->node_id << "\n";
 
     
-    InferenceRequest req{
-        "req-miss",
-        1200,  // prompt_tokens
-        200,   // output_tokens
-        0      // no prefix reuse
-    };
+   int prompt_tokens = 1200;
+
+   // MISS case → no reuse
+   int reused = ComputePrefixHitTokens(
+      false,
+      false,
+      prompt_tokens
+   );
+
+   InferenceRequest req{
+      "req-miss",
+      prompt_tokens,
+      200,
+      reused
+  };
 
     auto res = SimulateInference(req);
 
