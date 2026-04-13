@@ -329,14 +329,59 @@ std::vector<InferenceRequest> requests = {
 
 int total_latency = 0;
 
-for (const auto& req : requests) {
+/*for (const auto& req : requests) {
     auto res = SimulateInference(req);
     total_latency += res.total_latency_ms;
 }
 
 std::cout << "Average latency: "
           << total_latency / requests.size()
+          << " ms\n";*/
+
+    int total_requests = 0;
+     total_latency = 0;
+
+    int hit_requests = 0;
+    int miss_requests = 0;
+
+    int hit_latency_sum = 0;
+    int miss_latency_sum = 0;    
+
+
+    for (const auto& req : requests){auto res = SimulateInference(req);
+
+    total_requests++;
+    total_latency += res.total_latency_ms;
+
+    if (req.prefix_hit_tokens > 0) {
+       hit_requests++;
+       hit_latency_sum += res.total_latency_ms;
+    } else {
+      miss_requests++;
+      miss_latency_sum += res.total_latency_ms;
+    }   
+
+    }
+
+    std::cout << "Average latency: "
+          << total_latency / total_requests
           << " ms\n";
+
+std::cout << "Hit rate: "
+          << (100 * hit_requests / total_requests)
+          << "%\n";
+
+if (hit_requests > 0) {
+    std::cout << "Average hit latency: "
+              << hit_latency_sum / hit_requests
+              << " ms\n";
+}
+
+if (miss_requests > 0) {
+    std::cout << "Average miss latency: "
+              << miss_latency_sum / miss_requests
+              << " ms\n";
+}
 
   return 0;
 }
