@@ -8,7 +8,42 @@
 #include "cache/router.h"
 
 
+struct InferenceRequest {
+    std::string request_id;
+    int prompt_tokens{0};
+    int output_tokens{0};
+    int prefix_hit_tokens{0};
+};
 
+struct InferenceResult {
+    int uncached_tokens{0};
+    int prefill_latency_ms{0};
+    int decode_latency_ms{0};
+    int total_latency_ms{0};
+};
+
+InferenceResult SimulateInference(const InferenceRequest& req) {
+    const int routing_overhead_ms = 5;
+    const int prefill_cost_per_token = 1;
+    const int decode_cost_per_token = 1;
+
+    int uncached_tokens = req.prompt_tokens - req.prefix_hit_tokens;
+    if (uncached_tokens < 0) {
+        uncached_tokens = 0;
+    }
+
+    int prefill_latency_ms = uncached_tokens * prefill_cost_per_token;
+    int decode_latency_ms = req.output_tokens * decode_cost_per_token;
+    int total_latency_ms =
+        routing_overhead_ms + prefill_latency_ms + decode_latency_ms;
+
+    return {
+        uncached_tokens,
+        prefill_latency_ms,
+        decode_latency_ms,
+        total_latency_ms
+    };
+}
 int main() {
 
   cache::MetadataStore metadata;
@@ -97,6 +132,22 @@ cache::ServingNode node_b{
     std::cout << "Cache hit: "
               << (prefix->cache_hit ? "yes" : "no")
               << "\n";
+
+
+    InferenceRequest req{
+        "req-prefix",
+        1200,
+        200,
+        800   // reused prefix
+    };
+
+    auto res = SimulateInference(req);
+
+    std::cout << "Latency (PREFIX HIT): total=" << res.total_latency_ms
+              << " prefill=" << res.prefill_latency_ms
+              << " decode=" << res.decode_latency_ms
+              << " uncached_tokens=" << res.uncached_tokens
+              << "\n";          
   }
 
   // 3. Full miss
@@ -110,6 +161,22 @@ cache::ServingNode node_b{
   if (miss.has_value()) {
     std::cout << "Miss request routed to: "
               << miss->node_id << "\n";
+
+    
+    InferenceRequest req{
+        "req-miss",
+        1200,  // prompt_tokens
+        200,   // output_tokens
+        0      // no prefix reuse
+    };
+
+    auto res = SimulateInference(req);
+
+    std::cout << "Latency (MISS): total=" << res.total_latency_ms
+              << " prefill=" << res.prefill_latency_ms
+              << " decode=" << res.decode_latency_ms
+              << " uncached_tokens=" << res.uncached_tokens
+              << "\n";          
 
     std::cout << "Cache hit: "
               << (miss->cache_hit ? "yes" : "no")
@@ -215,6 +282,8 @@ if (force_evict.has_value()) {
         }
     }
 }
+
+
 
   return 0;
 }
