@@ -320,7 +320,23 @@ if (force_evict.has_value()) {
     }
 }
 
+std::vector<InferenceRequest> requests = {
+    {"r1", 1200, 200, 0},   // miss
+    {"r2", 1200, 200, 800}, // prefix
+    {"r3", 1200, 200, 0},   // miss
+    {"r4", 1200, 200, 900}, // prefix
+};
 
+int total_latency = 0;
+
+for (const auto& req : requests) {
+    auto res = SimulateInference(req);
+    total_latency += res.total_latency_ms;
+}
+
+std::cout << "Average latency: "
+          << total_latency / requests.size()
+          << " ms\n";
 
   return 0;
 }
