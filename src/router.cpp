@@ -1,11 +1,10 @@
 #include "cache/router.h"
+#include "cache/placement_policy.h"
 #include <iostream>
 
 namespace cache {
 
-static int estimate_kv_cache_mb(int tokens) {
-    return tokens / 10;
-}
+
 
 Router::Router(
     MetadataStore& metadata_store,
@@ -80,33 +79,63 @@ std::optional<RoutingDecision> Router::RouteRequest(
     }
 
     std::vector<ServingNode> eligible_nodes;
-    for (const auto& node : nodes) {
-        if (!node.available) {
-            continue;
-        }
 
-        if (node.available_vram_mb() < required_kv_mb) {
-            continue;
-        }
+   for (const auto& node : nodes) {
+    std::cout << "Node check: " << node.node_id
+              << " available=" << (node.available ? "yes" : "no")
+              << " total_vram_mb=" << node.total_vram_mb
+              << " used_vram_mb=" << node.used_vram_mb
+              << " free_vram_mb=" << node.available_vram_mb()
+              << " used_capacity=" << node.used_capacity
+              << "/" << node.capacity
+              << "\n";
 
-        eligible_nodes.push_back(node);
+    if (!node.available) {
+        continue;
     }
 
-    if (eligible_nodes.empty()) {
+    if (node.available_vram_mb() < required_kv_mb) {
+        continue;
+    }
+
+    eligible_nodes.push_back(node);
+}
+
+if (eligible_nodes.empty()) {
+    std::cout << "Eligible nodes: none\n";
     std::cout << "Rejected request: insufficient VRAM across all nodes"
               << " required_kv_mb=" << required_kv_mb
               << "\n";
     return std::nullopt;
 }
 
-    // pick least-loaded eligible node
-    ServingNode best = eligible_nodes.front();
+std::cout << "Eligible nodes:\n";
+for (const auto& node : eligible_nodes) {
+    std::cout << " [" << node.node_id
+              << " free_vram_mb=" << node.available_vram_mb()
+              << " used_capacity=" << node.used_capacity
+              << "/" << node.capacity
+              << "]\n";
+}
+std::cout << "\n";
 
-    for (const auto& node : eligible_nodes) {
-        if (node.used_capacity < best.used_capacity) {
-            best = node;
-        }
+ServingNode best = eligible_nodes.front();
+
+
+int best_leftover_vram = best.available_vram_mb() - required_kv_mb;
+
+
+
+for (const auto& node : eligible_nodes) {
+    int leftover_vram = node.available_vram_mb() - required_kv_mb;
+
+    if (leftover_vram < best_leftover_vram ||
+        (leftover_vram == best_leftover_vram &&
+         node.used_capacity < best.used_capacity)) {
+        best = node;
+        best_leftover_vram = leftover_vram;
     }
+}
 
     if (best.used_capacity >= best.capacity) {
     auto evicted = metadata_store_.EvictOne(best.node_id);
@@ -134,10 +163,12 @@ std::optional<RoutingDecision> Router::RouteRequest(
 
 
     std::cout << "Selected node: " << best.node_id
-              << " gpu=" << best.gpu_type
-              << " free_vram_mb=" << best.available_vram_mb()
-              << " required_kv_mb=" << required_kv_mb
-              << "\n";
+          << " gpu=" << best.gpu_type
+          << " free_vram_mb=" << best.available_vram_mb()
+          << " required_kv_mb=" << required_kv_mb
+          << " leftover_vram_mb=" << best_leftover_vram
+          << " reason=best_fit_vram"
+          << "\n";
 
     // assign session
     SessionRoute route;

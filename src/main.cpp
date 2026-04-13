@@ -7,9 +7,7 @@
 #include "cache/placement_policy.h"
 #include "cache/router.h"
 
-static int estimate_kv_cache_mb(int tokens) {
-    return tokens / 10;
-}
+
 
 int main() {
 
@@ -20,30 +18,41 @@ int main() {
   cache::Router router(metadata, nodes);
   cache::Coordinator coordinator(metadata, nodes, router, placement);
 
-  cache::ServingNode node_a{
-      "node-a",
-      "127.0.0.1:9001",
-      1,
-      1,
-      "A100",
-      1000,
-      700,
-      true
-  };
+ cache::ServingNode node_a{
+    "node-a",
+    "127.0.0.1:9001",
+    1,
+    1,
+    "A100",
+    1000,
+    800,
+    true
+};
 
-  cache::ServingNode node_b{
-      "node-b",
-      "127.0.0.1:9002",
-      1,
-      0,
-      "L4",
-      500,
-      450,
-      true
-  };
+cache::ServingNode node_b{
+    "node-b",
+    "127.0.0.1:9002",
+    1,
+    0,
+    "L4",
+    500,
+    500,
+    true
+};
 
   nodes.RegisterNode(node_a);
   nodes.RegisterNode(node_b);
+
+
+  auto a = nodes.GetNode("node-a");
+  if (a.has_value()) {
+    std::cout << "node-a init: gpu=" << a->gpu_type
+              << " total_vram_mb=" << a->total_vram_mb
+              << " used_vram_mb=" << a->used_vram_mb
+              << " free_vram_mb=" << a->available_vram_mb()
+              << " available=" << (a->available ? "yes" : "no")
+              << "\n";
+  }
 
   // Existing cache for a shorter prefix
   cache::CacheEntry entry{
@@ -53,7 +62,7 @@ int main() {
       "node-a",
       0,
       0,
-      estimate_kv_cache_mb(1000)
+      cache::estimate_kv_cache_mb(1000)
   };
 
   coordinator.RegisterCache(entry);
@@ -114,7 +123,7 @@ int main() {
             miss->node_id,
             0,
             0,
-            estimate_kv_cache_mb(1000)
+            cache::estimate_kv_cache_mb(1000)
         };
 
         coordinator.RegisterCache(new_entry);
@@ -190,7 +199,7 @@ if (force_evict.has_value()) {
             force_evict->node_id,
             0,
             0,
-            estimate_kv_cache_mb(1000)
+            cache::estimate_kv_cache_mb(1000)
         };
 
         coordinator.RegisterCache(evicted_fill);
