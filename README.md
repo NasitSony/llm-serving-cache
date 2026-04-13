@@ -264,6 +264,90 @@ Evicted cache block from node: node-b
 • Fault-tolerant cache placement decisions
 ```
 
+
+# 📊 Benchmark: Cache-Aware Inference Simulation
+
+## Overview
+
+This project includes a mock inference engine that simulates the latency impact of KV cache reuse in LLM serving systems.
+
+The simulation models:
+
+• routing overhead
+• prefill (prompt processing) cost
+• decode (generation) cost
+• cache reuse via prefix matching
+
+## Latency Model
+
+Each request is defined by:
+
+• prompt_tokens
+• output_tokens
+• prefix_hit_tokens
+
+Derived:
+
+```bash
+uncached_tokens = prompt_tokens - prefix_hit_tokens
+```
+
+Latency is computed as:
+
+```bash
+prefill_latency  = uncached_tokens × prefill_cost
+decode_latency   = output_tokens × decode_cost
+
+total_latency =
+    routing_overhead +
+    prefill_latency +
+    decode_latency
+```
+
+## Workload
+
+A mixed workload of requests is simulated, including:
+
+• cache misses (no reuse)
+• prefix hits (partial reuse)
+
+Routing decisions determine cache reuse, which directly affects latency.
+
+## Results
+
+```bash
+Eligible nodes: none
+Rejected request: insufficient VRAM across all nodes required_kv_mb=1000
+
+Average latency: 980 ms
+Hit rate: 50%
+Average hit latency: 555 ms
+Average miss latency: 1405 ms
+```
+## Analysis
+
+• Cache hits significantly reduce latency (~2.5× lower than misses)
+• Prefill cost dominates latency for cache misses
+• Prefix reuse reduces uncached tokens, lowering total latency
+• Overall system latency improves with higher cache hit rates
+
+## Key Takeaways
+
+• KV cache reuse is critical for efficient LLM serving
+• Routing decisions impact end-to-end latency, not just placement
+• GPU memory constraints influence both admission and performance
+• Even simple cache-aware policies yield substantial gains
+
+## Summary
+
+This simulation demonstrates how:
+
+```bash
+Routing → Cache reuse → GPU memory → Latency
+```
+
+are tightly coupled in LLM serving systems.
+
 # 🎯 Why This Matters
 
 This project models a **real AI inference control plane**, focusing on:
