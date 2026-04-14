@@ -174,7 +174,6 @@ NodeBlockPool InitBlockPool(const cache::ServingNode& node, int block_size_mb) {
     return pool;
 }
 
-
 void FreeBlocks(NodeBlockPool& pool, const std::vector<std::string>& block_ids) {
     int freed = 0;
 
@@ -193,6 +192,58 @@ void FreeBlocks(NodeBlockPool& pool, const std::vector<std::string>& block_ids) 
         pool.free_blocks = pool.total_blocks;
     }
 }
+
+bool EvictOldestRequest(
+    std::vector<std::string>& eviction_order,
+    std::unordered_map<std::string, std::vector<std::string>>& request_to_blocks,
+    NodeBlockPool& pool_a,
+    NodeBlockPool& pool_b
+) {
+    while (!eviction_order.empty()) {
+        std::string victim = eviction_order.front();
+        eviction_order.erase(eviction_order.begin());
+
+        auto it = request_to_blocks.find(victim);
+        if (it == request_to_blocks.end()) {
+            continue;  // stale entry, skip it
+        }
+
+        NodeBlockPool* victim_pool = nullptr;
+        if (!it->second.empty()) {
+            if (it->second[0].find("node-a") != std::string::npos) {
+                victim_pool = &pool_a;
+            } else if (it->second[0].find("node-b") != std::string::npos) {
+                victim_pool = &pool_b;
+            }
+        }
+
+        if (victim_pool == nullptr) {
+            continue;  // malformed mapping, skip it
+        }
+
+        FreeBlocks(*victim_pool, it->second);
+
+        std::cout << "Evicted oldest request " << victim << " blocks=[";
+        for (size_t i = 0; i < it->second.size(); ++i) {
+            std::cout << it->second[i];
+            if (i + 1 < it->second.size()) std::cout << ",";
+        }
+        std::cout << "]\n";
+
+        std::cout << victim_pool->node_id
+                  << " free_blocks=" << victim_pool->free_blocks
+                  << " allocated_blocks="
+                  << (victim_pool->total_blocks - victim_pool->free_blocks)
+                  << "\n";
+
+        request_to_blocks.erase(it);
+        return true;
+    }
+
+    return false;
+}
+
+
 
 int ComputePrefixHitTokens(
     bool cache_hit,
@@ -551,6 +602,9 @@ if (miss_requests > 0) {
               << " ms\n";
 }
 
+
+std::vector<std::string> eviction_order;
+
 int kv_size_mb = 100;
 int required_blocks = RequiredBlocks(kv_size_mb, pool_a.block_size_mb);
 
@@ -564,6 +618,7 @@ if (allocated.empty()) {
     std::cout << "Allocation failed\n";
 } else {
     request_to_blocks["req-1"] = allocated;
+    eviction_order.push_back("req-1");
 
     std::cout << "allocated_blocks=[";
     for (size_t i = 0; i < allocated.size(); ++i) {
@@ -625,7 +680,7 @@ std::cout << "required_kv_mb=" << req3_kv_mb
           << "\n";
 
 // Optional: make node-a look tighter so node-b gets chosen
-pool_a.free_blocks = 5;
+//pool_a.free_blocks = 5;
 
 int req4_kv_mb = 180;
 int req4_required_blocks = RequiredBlocks(req4_kv_mb, pool_a.block_size_mb);
@@ -639,6 +694,8 @@ std::cout << "required_kv_mb=" << req4_kv_mb
 
 pool_a.free_blocks = 20;
 pool_b.free_blocks = 31;
+
+
 
 NodeBlockPool* selected_pool =
     SelectBestFitPool(pool_a, pool_b, req4_required_blocks);
@@ -655,6 +712,7 @@ if (selected_pool == nullptr) {
         std::cout << "Allocation failed on selected pool\n";
     } else {
         request_to_blocks["req-4"] = allocated_req4;
+        eviction_order.push_back("req-4");
 
         std::cout << "allocated_blocks=[";
         for (size_t i = 0; i < allocated_req4.size(); ++i) {
@@ -669,7 +727,7 @@ if (selected_pool == nullptr) {
                   << (selected_pool->total_blocks - selected_pool->free_blocks)
                   << "\n";
 
-        auto it_req4 = request_to_blocks.find("req-4");
+       /* auto it_req4 = request_to_blocks.find("req-4");
         if (it_req4 != request_to_blocks.end()) {
             FreeBlocks(*selected_pool, it_req4->second);
 
@@ -686,8 +744,8 @@ if (selected_pool == nullptr) {
                       << (selected_pool->total_blocks - selected_pool->free_blocks)
                       << "\n";
 
-            request_to_blocks.erase(it_req4);
-        }
+            //request_to_blocks.erase(it_req4);
+        }*/
     }
 }
 
@@ -701,9 +759,9 @@ std::cout << "required_kv_mb=" << req5_kv_mb
           << " required_blocks=" << req5_required_blocks
           << "\n";
 
-// Make both pools too small for req-5
-pool_a.free_blocks = 20;
-pool_b.free_blocks = 31;
+
+
+
 
 NodeBlockPool* selected_pool_req5 =
     SelectBestFitPool(pool_a, pool_b, req5_required_blocks);
@@ -732,6 +790,7 @@ if (selected_pool_req5 == nullptr) {
         std::cout << "Allocation failed on selected pool\n";
     } else {
         request_to_blocks["req-5"] = allocated_req5;
+        eviction_order.push_back("req-5");
 
         std::cout << "allocated_blocks=[";
         for (size_t i = 0; i < allocated_req5.size(); ++i) {
@@ -746,6 +805,31 @@ if (selected_pool_req5 == nullptr) {
                   << (selected_pool_req5->total_blocks - selected_pool_req5->free_blocks)
                   << "\n";
     }
+}
+
+
+std::cout << "eviction_order size=" << eviction_order.size() << "\n";
+for (const auto& req_id : eviction_order) {
+    std::cout << "queued victim=" << req_id << "\n";
+}
+
+std::cout << "request_to_blocks size=" << request_to_blocks.size() << "\n";
+for (const auto& [req_id, blocks] : request_to_blocks) {
+    std::cout << "mapped request=" << req_id
+              << " block_count=" << blocks.size()
+              << "\n";
+}
+
+std::cout << "\nEvicting oldest request\n";
+bool evicted = EvictOldestRequest(
+    eviction_order,
+    request_to_blocks,
+    pool_a,
+    pool_b
+);
+
+if (!evicted) {
+    std::cout << "No request available for eviction\n";
 }
   return 0;
 }
