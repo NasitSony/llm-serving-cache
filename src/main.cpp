@@ -641,7 +641,7 @@ pool_a.free_blocks = 20;
 pool_b.free_blocks = 31;
 
 NodeBlockPool* selected_pool =
-    SelectBestFitPool(pool_a, pool_b, req3_required_blocks);
+    SelectBestFitPool(pool_a, pool_b, req4_required_blocks);
 
 if (selected_pool == nullptr) {
     std::cout << "Allocation failed: no node has enough free blocks\n";
@@ -668,8 +668,27 @@ if (selected_pool == nullptr) {
                   << " allocated_blocks="
                   << (selected_pool->total_blocks - selected_pool->free_blocks)
                   << "\n";
+
+        auto it_req4 = request_to_blocks.find("req-4");
+        if (it_req4 != request_to_blocks.end()) {
+            FreeBlocks(*selected_pool, it_req4->second);
+
+            std::cout << "Freed request req-4 blocks=[";
+            for (size_t i = 0; i < it_req4->second.size(); ++i) {
+                std::cout << it_req4->second[i];
+                if (i + 1 < it_req4->second.size()) std::cout << ",";
+            }
+            std::cout << "]\n";
+
+            std::cout << selected_pool->node_id
+                      << " free_blocks=" << selected_pool->free_blocks
+                      << " allocated_blocks="
+                      << (selected_pool->total_blocks - selected_pool->free_blocks)
+                      << "\n";
+
+            request_to_blocks.erase(it_req4);
+        }
     }
 }
-
   return 0;
 }
