@@ -534,5 +534,23 @@ if (allocated.empty()) {
     }
 }
 
+
+int large_kv_mb = 1200;
+int large_required_blocks = RequiredBlocks(large_kv_mb, pool_a.block_size_mb);
+
+auto failed_alloc = AllocateBlocks(pool_a, large_required_blocks);
+
+std::cout << "Allocating request req-2 on " << pool_a.node_id << "\n";
+std::cout << "required_kv_mb=" << large_kv_mb
+          << " required_blocks=" << large_required_blocks << "\n";
+
+if (failed_alloc.empty()) {
+    std::cout << "Allocation failed: insufficient free blocks\n";
+    std::cout << pool_a.node_id
+              << " free_blocks=" << pool_a.free_blocks
+              << " allocated_blocks=" << (pool_a.total_blocks - pool_a.free_blocks)
+              << "\n";
+}
+
   return 0;
 }
