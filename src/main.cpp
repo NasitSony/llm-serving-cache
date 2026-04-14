@@ -780,11 +780,60 @@ if (selected_pool_req5 == nullptr) {
               << " allocated_blocks="
               << (pool_b.total_blocks - pool_b.free_blocks)
               << "\n";
+
+    std::cout << "Triggering eviction...\n";
+
+    bool evicted = EvictOldestRequest(
+        eviction_order,
+        request_to_blocks,
+        pool_a,
+        pool_b
+    );
+
+    if (evicted) {
+        std::cout << "Retrying allocation for req-5\n";
+
+        selected_pool_req5 =
+            SelectBestFitPool(pool_a, pool_b, req5_required_blocks);
+
+        if (selected_pool_req5 == nullptr) {
+            std::cout << "Rejected request req-5: eviction insufficient\n";
+        } else {
+            std::cout << "Selected pool=" << selected_pool_req5->node_id
+                      << " reason=best_fit_blocks\n";
+
+            auto allocated_req5 =
+                AllocateBlocks(*selected_pool_req5, req5_required_blocks);
+
+            if (allocated_req5.empty()) {
+                std::cout << "Allocation failed on selected pool after eviction\n";
+            } else {
+                request_to_blocks["req-5"] = allocated_req5;
+                eviction_order.push_back("req-5");
+
+                std::cout << "allocated_blocks=[";
+                for (size_t i = 0; i < allocated_req5.size(); ++i) {
+                    std::cout << allocated_req5[i];
+                    if (i + 1 < allocated_req5.size()) std::cout << ",";
+                }
+                std::cout << "]\n";
+
+                std::cout << selected_pool_req5->node_id
+                          << " free_blocks=" << selected_pool_req5->free_blocks
+                          << " allocated_blocks="
+                          << (selected_pool_req5->total_blocks - selected_pool_req5->free_blocks)
+                          << "\n";
+            }
+        }
+    } else {
+        std::cout << "Rejected request req-5: no evictable request found\n";
+    }
 } else {
     std::cout << "Selected pool=" << selected_pool_req5->node_id
               << " reason=best_fit_blocks\n";
 
-    auto allocated_req5 = AllocateBlocks(*selected_pool_req5, req5_required_blocks);
+    auto allocated_req5 =
+        AllocateBlocks(*selected_pool_req5, req5_required_blocks);
 
     if (allocated_req5.empty()) {
         std::cout << "Allocation failed on selected pool\n";
@@ -808,28 +857,5 @@ if (selected_pool_req5 == nullptr) {
 }
 
 
-std::cout << "eviction_order size=" << eviction_order.size() << "\n";
-for (const auto& req_id : eviction_order) {
-    std::cout << "queued victim=" << req_id << "\n";
-}
-
-std::cout << "request_to_blocks size=" << request_to_blocks.size() << "\n";
-for (const auto& [req_id, blocks] : request_to_blocks) {
-    std::cout << "mapped request=" << req_id
-              << " block_count=" << blocks.size()
-              << "\n";
-}
-
-std::cout << "\nEvicting oldest request\n";
-bool evicted = EvictOldestRequest(
-    eviction_order,
-    request_to_blocks,
-    pool_a,
-    pool_b
-);
-
-if (!evicted) {
-    std::cout << "No request available for eviction\n";
-}
   return 0;
 }
