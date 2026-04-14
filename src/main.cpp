@@ -22,6 +22,20 @@ struct InferenceResult {
     int total_latency_ms{0};
 };
 
+
+struct CacheBlock {
+    std::string block_id;
+    bool allocated{false};
+};
+
+struct NodeBlockPool {
+    std::string node_id;
+    int block_size_mb{16};
+    int total_blocks{0};
+    int free_blocks{0};
+    std::vector<CacheBlock> blocks;
+};
+
 InferenceResult SimulateInference(const InferenceRequest& req) {
     const int routing_overhead_ms = 5;
     const int prefill_cost_per_token = 1;
@@ -43,6 +57,22 @@ InferenceResult SimulateInference(const InferenceRequest& req) {
         decode_latency_ms,
         total_latency_ms
     };
+}
+
+NodeBlockPool InitBlockPool(const cache::ServingNode& node, int block_size_mb) {
+    NodeBlockPool pool;
+    pool.node_id = node.node_id;
+    pool.block_size_mb = block_size_mb;
+    pool.total_blocks = node.total_vram_mb / block_size_mb;
+    pool.free_blocks = pool.total_blocks;
+
+    for (int i = 0; i < pool.total_blocks; ++i) {
+        pool.blocks.push_back(
+            CacheBlock{node.node_id + "-block-" + std::to_string(i), false}
+        );
+    }
+
+    return pool;
 }
 
 
@@ -96,6 +126,26 @@ cache::ServingNode node_b{
 
   nodes.RegisterNode(node_a);
   nodes.RegisterNode(node_b);
+
+
+
+// 🔥 NEW BLOCK SYSTEM
+auto pool_a = InitBlockPool(node_a, 16);
+auto pool_b = InitBlockPool(node_b, 16);
+
+std::cout << pool_a.node_id
+          << " total_blocks=" << pool_a.total_blocks
+          << " free_blocks=" << pool_a.free_blocks
+          << " allocated_blocks=" << (pool_a.total_blocks - pool_a.free_blocks)
+          << "\n";
+
+std::cout << pool_b.node_id
+          << " total_blocks=" << pool_b.total_blocks
+          << " free_blocks=" << pool_b.free_blocks
+          << " allocated_blocks=" << (pool_b.total_blocks - pool_b.free_blocks)
+          << "\n";
+
+// ⬇️ existing routing starts here
 
 
   auto a = nodes.GetNode("node-a");
