@@ -36,6 +36,40 @@ struct NodeBlockPool {
     std::vector<CacheBlock> blocks;
 };
 
+
+int RequiredBlocks(int kv_size_mb, int block_size_mb) {
+    return (kv_size_mb + block_size_mb - 1) / block_size_mb;
+}
+
+std::vector<std::string> AllocateBlocks(NodeBlockPool& pool, int required_blocks) {
+    std::vector<std::string> allocated;
+
+    for (auto& block : pool.blocks) {
+        if (!block.allocated) {
+            block.allocated = true;
+            allocated.push_back(block.block_id);
+
+            if ((int)allocated.size() == required_blocks) {
+                break;
+            }
+        }
+    }
+
+    if ((int)allocated.size() < required_blocks) {
+        for (auto& block : pool.blocks) {
+            for (const auto& id : allocated) {
+                if (block.block_id == id) {
+                    block.allocated = false;
+                }
+            }
+        }
+        return {};
+    }
+
+    pool.free_blocks -= required_blocks;
+    return allocated;
+}
+
 InferenceResult SimulateInference(const InferenceRequest& req) {
     const int routing_overhead_ms = 5;
     const int prefill_cost_per_token = 1;
@@ -431,6 +465,31 @@ if (miss_requests > 0) {
     std::cout << "Average miss latency: "
               << miss_latency_sum / miss_requests
               << " ms\n";
+}
+
+int kv_size_mb = 100;
+int required_blocks = RequiredBlocks(kv_size_mb, pool_a.block_size_mb);
+
+auto allocated = AllocateBlocks(pool_a, required_blocks);
+
+std::cout << "Allocating request req-1 on " << pool_a.node_id << "\n";
+std::cout << "required_kv_mb=" << kv_size_mb
+          << " required_blocks=" << required_blocks << "\n";
+
+if (allocated.empty()) {
+    std::cout << "Allocation failed\n";
+} else {
+    std::cout << "allocated_blocks=[";
+    for (size_t i = 0; i < allocated.size(); ++i) {
+        std::cout << allocated[i];
+        if (i + 1 < allocated.size()) std::cout << ",";
+    }
+    std::cout << "]\n";
+
+    std::cout << pool_a.node_id
+              << " free_blocks=" << pool_a.free_blocks
+              << " allocated_blocks=" << (pool_a.total_blocks - pool_a.free_blocks)
+              << "\n";
 }
 
   return 0;
