@@ -4,6 +4,8 @@ A lightweight **control-plane service for LLM KV-cache placement and routing.**
 
 This system tracks where cached attention prefixes live across distributed inference nodes and routes requests to **maximize cache reuse and minimize recomputation.**
 
+Implements a GPU-aware KV cache block allocator with best-fit placement, request-level memory tracking, and failure handling across multiple nodes.
+
 # 🧠 Motivation
 
 Large Language Model inference can be significantly accelerated through **KV-cache reuse.**
@@ -347,6 +349,138 @@ Routing → Cache reuse → GPU memory → Latency
 ```
 
 are tightly coupled in LLM serving systems.
+
+
+# 🟠 KV Cache Block System
+
+## Overview
+
+This phase introduces a fixed-size block abstraction to model GPU memory for KV cache allocation.
+
+Instead of tracking VRAM as a single value, memory is represented as discrete blocks, enabling realistic simulation of allocation, placement, and reclamation behavior in LLM serving systems.
+
+
+## Design
+
+### Block Abstraction
+
+GPU memory is divided into fixed-size blocks:
+
+```bash
+block_size = 16 MB
+```
+
+### Per-Node Block Pool
+
+Each node maintains a pool of blocks derived from its VRAM:
+
+```bash
+total_blocks = total_vram_mb / block_size
+```
+
+Each pool tracks:
+
+- free blocks
+- allocated blocks
+
+
+### Allocation
+
+For each request:
+
+```bash
+required_blocks = ceil(kv_size_mb / block_size)
+```
+
+Blocks are allocated from a selected node’s pool.
+
+
+### Placement Policy
+
+A *** best-fit strategy *** is used:
+
+- consider nodes with sufficient free blocks
+- compute leftover blocks after allocation
+- select the node with the minimum leftover
+
+### Request Mapping
+
+Allocated blocks are tracked per request:
+
+```bash
+request_id → list of block_ids
+```
+
+This enables precise memory management and cleanup.
+
+### Freeing 
+
+On request completion:
+- allocated blocks are released
+- block pool state is restored
+
+
+## Example: Best-Fit Allocation
+
+```bash
+Allocating request req-4
+required_kv_mb=180 required_blocks=12
+
+Candidate node-a: free_blocks=20 leftover_blocks=8
+Candidate node-b: free_blocks=31 leftover_blocks=19
+
+Selected pool=node-a reason=best_fit_blocks
+
+allocated_blocks=[node-a-block-0,...,node-a-block-11]
+node-a free_blocks=8 allocated_blocks=54
+```
+
+
+## Example: Freeing Blocks
+
+```bash
+Freed request req-4 blocks=[node-a-block-0,...,node-a-block-11]
+node-a free_blocks=20 allocated_blocks=42
+```
+
+
+## Example: Allocation Failure
+
+```bash
+Allocating request req-5
+required_kv_mb=600 required_blocks=38
+
+Candidate node-a: free_blocks=20 rejected=insufficient_blocks
+Candidate node-b: free_blocks=31 rejected=insufficient_blocks
+
+Allocation failed: no node has enough free blocks
+```
+
+
+## Key Takeaways
+
+- GPU memory is modeled as discrete allocation units
+- Best-fit placement improves memory utilization
+- Request-level tracking enables accurate allocation and freeing
+- Failure handling ensures correctness under resource constraints
+
+
+## Summary
+
+This phase transforms the system from:
+
+```bash
+VRAM tracking → memory management system
+```
+
+and demonstrates how:
+
+```bash
+Request → KV size → Block allocation → Placement → Free
+```
+
+drive realistic GPU memory behavior in LLM serving systems.
+
 
 # 🎯 Why This Matters
 
