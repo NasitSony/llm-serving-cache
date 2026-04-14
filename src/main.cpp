@@ -110,6 +110,25 @@ NodeBlockPool InitBlockPool(const cache::ServingNode& node, int block_size_mb) {
 }
 
 
+void FreeBlocks(NodeBlockPool& pool, const std::vector<std::string>& block_ids) {
+    int freed = 0;
+
+    for (auto& block : pool.blocks) {
+        for (const auto& id : block_ids) {
+            if (block.block_id == id && block.allocated) {
+                block.allocated = false;
+                freed++;
+                break;
+            }
+        }
+    }
+
+    pool.free_blocks += freed;
+    if (pool.free_blocks > pool.total_blocks) {
+        pool.free_blocks = pool.total_blocks;
+    }
+}
+
 int ComputePrefixHitTokens(
     bool cache_hit,
     bool is_prefix,
@@ -471,6 +490,20 @@ int kv_size_mb = 100;
 int required_blocks = RequiredBlocks(kv_size_mb, pool_a.block_size_mb);
 
 auto allocated = AllocateBlocks(pool_a, required_blocks);
+
+FreeBlocks(pool_a, allocated);
+
+std::cout << "Freed blocks=[";
+for (size_t i = 0; i < allocated.size(); ++i) {
+    std::cout << allocated[i];
+    if (i + 1 < allocated.size()) std::cout << ",";
+}
+std::cout << "]\n";
+
+std::cout << pool_a.node_id
+          << " free_blocks=" << pool_a.free_blocks
+          << " allocated_blocks=" << (pool_a.total_blocks - pool_a.free_blocks)
+          << "\n";
 
 std::cout << "Allocating request req-1 on " << pool_a.node_id << "\n";
 std::cout << "required_kv_mb=" << kv_size_mb
