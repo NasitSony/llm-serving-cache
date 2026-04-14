@@ -98,6 +98,43 @@ NodeBlockPool* SelectPoolForRequest(
     return nullptr;
 }
 
+NodeBlockPool* SelectBestFitPool(
+    NodeBlockPool& pool_a,
+    NodeBlockPool& pool_b,
+    int required_blocks
+) {
+    NodeBlockPool* best = nullptr;
+    int best_leftover = 0;
+
+    auto consider = [&](NodeBlockPool& pool) {
+        if (pool.free_blocks < required_blocks) {
+            std::cout << "Candidate " << pool.node_id
+                      << ": free_blocks=" << pool.free_blocks
+                      << " required_blocks=" << required_blocks
+                      << " rejected=insufficient_blocks\n";
+            return;
+        }
+
+        int leftover = pool.free_blocks - required_blocks;
+
+        std::cout << "Candidate " << pool.node_id
+                  << ": free_blocks=" << pool.free_blocks
+                  << " leftover_blocks=" << leftover
+                  << "\n";
+
+        if (best == nullptr || leftover < best_leftover) {
+            best = &pool;
+            best_leftover = leftover;
+        }
+    };
+
+    consider(pool_a);
+    consider(pool_b);
+
+    return best;
+}
+
+
 InferenceResult SimulateInference(const InferenceRequest& req) {
     const int routing_overhead_ms = 5;
     const int prefill_cost_per_token = 1;
@@ -590,25 +627,39 @@ std::cout << "required_kv_mb=" << req3_kv_mb
 // Optional: make node-a look tighter so node-b gets chosen
 pool_a.free_blocks = 5;
 
+int req4_kv_mb = 180;
+int req4_required_blocks = RequiredBlocks(req4_kv_mb, pool_a.block_size_mb);
+
+
+
+std::cout << "\nAllocating request req-4\n";
+std::cout << "required_kv_mb=" << req4_kv_mb
+          << " required_blocks=" << req4_required_blocks
+          << "\n";
+
+pool_a.free_blocks = 20;
+pool_b.free_blocks = 31;
+
 NodeBlockPool* selected_pool =
-    SelectPoolForRequest(pool_a, pool_b, req3_required_blocks);
+    SelectBestFitPool(pool_a, pool_b, req3_required_blocks);
 
 if (selected_pool == nullptr) {
     std::cout << "Allocation failed: no node has enough free blocks\n";
 } else {
-    std::cout << "Selected pool=" << selected_pool->node_id << "\n";
+    std::cout << "Selected pool=" << selected_pool->node_id
+              << " reason=best_fit_blocks\n";
 
-    auto allocated_req3 = AllocateBlocks(*selected_pool, req3_required_blocks);
+    auto allocated_req4 = AllocateBlocks(*selected_pool, req4_required_blocks);
 
-    if (allocated_req3.empty()) {
+    if (allocated_req4.empty()) {
         std::cout << "Allocation failed on selected pool\n";
     } else {
-        request_to_blocks["req-3"] = allocated_req3;
+        request_to_blocks["req-4"] = allocated_req4;
 
         std::cout << "allocated_blocks=[";
-        for (size_t i = 0; i < allocated_req3.size(); ++i) {
-            std::cout << allocated_req3[i];
-            if (i + 1 < allocated_req3.size()) std::cout << ",";
+        for (size_t i = 0; i < allocated_req4.size(); ++i) {
+            std::cout << allocated_req4[i];
+            if (i + 1 < allocated_req4.size()) std::cout << ",";
         }
         std::cout << "]\n";
 
