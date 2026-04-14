@@ -690,5 +690,62 @@ if (selected_pool == nullptr) {
         }
     }
 }
+
+
+std::cout << "\nAllocating request req-5\n";
+
+int req5_kv_mb = 600;  // 600 / 16 -> 38 blocks
+int req5_required_blocks = RequiredBlocks(req5_kv_mb, pool_a.block_size_mb);
+
+std::cout << "required_kv_mb=" << req5_kv_mb
+          << " required_blocks=" << req5_required_blocks
+          << "\n";
+
+// Make both pools too small for req-5
+pool_a.free_blocks = 20;
+pool_b.free_blocks = 31;
+
+NodeBlockPool* selected_pool_req5 =
+    SelectBestFitPool(pool_a, pool_b, req5_required_blocks);
+
+if (selected_pool_req5 == nullptr) {
+    std::cout << "Allocation failed: no node has enough free blocks\n";
+
+    std::cout << pool_a.node_id
+              << " free_blocks=" << pool_a.free_blocks
+              << " allocated_blocks="
+              << (pool_a.total_blocks - pool_a.free_blocks)
+              << "\n";
+
+    std::cout << pool_b.node_id
+              << " free_blocks=" << pool_b.free_blocks
+              << " allocated_blocks="
+              << (pool_b.total_blocks - pool_b.free_blocks)
+              << "\n";
+} else {
+    std::cout << "Selected pool=" << selected_pool_req5->node_id
+              << " reason=best_fit_blocks\n";
+
+    auto allocated_req5 = AllocateBlocks(*selected_pool_req5, req5_required_blocks);
+
+    if (allocated_req5.empty()) {
+        std::cout << "Allocation failed on selected pool\n";
+    } else {
+        request_to_blocks["req-5"] = allocated_req5;
+
+        std::cout << "allocated_blocks=[";
+        for (size_t i = 0; i < allocated_req5.size(); ++i) {
+            std::cout << allocated_req5[i];
+            if (i + 1 < allocated_req5.size()) std::cout << ",";
+        }
+        std::cout << "]\n";
+
+        std::cout << selected_pool_req5->node_id
+                  << " free_blocks=" << selected_pool_req5->free_blocks
+                  << " allocated_blocks="
+                  << (selected_pool_req5->total_blocks - selected_pool_req5->free_blocks)
+                  << "\n";
+    }
+}
   return 0;
 }
