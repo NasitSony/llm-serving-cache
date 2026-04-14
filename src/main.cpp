@@ -1,4 +1,5 @@
 #include <iostream>
+#include <unordered_map>
 
 #include "cache/cache_types.h"
 #include "cache/coordinator.h"
@@ -36,6 +37,7 @@ struct NodeBlockPool {
     std::vector<CacheBlock> blocks;
 };
 
+std::unordered_map<std::string, std::vector<std::string>> request_to_blocks;
 
 int RequiredBlocks(int kv_size_mb, int block_size_mb) {
     return (kv_size_mb + block_size_mb - 1) / block_size_mb;
@@ -491,20 +493,6 @@ int required_blocks = RequiredBlocks(kv_size_mb, pool_a.block_size_mb);
 
 auto allocated = AllocateBlocks(pool_a, required_blocks);
 
-FreeBlocks(pool_a, allocated);
-
-std::cout << "Freed blocks=[";
-for (size_t i = 0; i < allocated.size(); ++i) {
-    std::cout << allocated[i];
-    if (i + 1 < allocated.size()) std::cout << ",";
-}
-std::cout << "]\n";
-
-std::cout << pool_a.node_id
-          << " free_blocks=" << pool_a.free_blocks
-          << " allocated_blocks=" << (pool_a.total_blocks - pool_a.free_blocks)
-          << "\n";
-
 std::cout << "Allocating request req-1 on " << pool_a.node_id << "\n";
 std::cout << "required_kv_mb=" << kv_size_mb
           << " required_blocks=" << required_blocks << "\n";
@@ -512,6 +500,8 @@ std::cout << "required_kv_mb=" << kv_size_mb
 if (allocated.empty()) {
     std::cout << "Allocation failed\n";
 } else {
+    request_to_blocks["req-1"] = allocated;
+
     std::cout << "allocated_blocks=[";
     for (size_t i = 0; i < allocated.size(); ++i) {
         std::cout << allocated[i];
@@ -523,6 +513,25 @@ if (allocated.empty()) {
               << " free_blocks=" << pool_a.free_blocks
               << " allocated_blocks=" << (pool_a.total_blocks - pool_a.free_blocks)
               << "\n";
+
+    auto it = request_to_blocks.find("req-1");
+    if (it != request_to_blocks.end()) {
+        FreeBlocks(pool_a, it->second);
+
+        std::cout << "Freed request req-1 blocks=[";
+        for (size_t i = 0; i < it->second.size(); ++i) {
+            std::cout << it->second[i];
+            if (i + 1 < it->second.size()) std::cout << ",";
+        }
+        std::cout << "]\n";
+
+        std::cout << pool_a.node_id
+                  << " free_blocks=" << pool_a.free_blocks
+                  << " allocated_blocks=" << (pool_a.total_blocks - pool_a.free_blocks)
+                  << "\n";
+
+        request_to_blocks.erase(it);
+    }
 }
 
   return 0;
