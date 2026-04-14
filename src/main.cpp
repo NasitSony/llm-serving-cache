@@ -196,6 +196,7 @@ void FreeBlocks(NodeBlockPool& pool, const std::vector<std::string>& block_ids) 
 bool EvictOldestRequest(
     std::vector<std::string>& eviction_order,
     std::unordered_map<std::string, std::vector<std::string>>& request_to_blocks,
+    std::unordered_map<std::string, bool>& request_active,
     NodeBlockPool& pool_a,
     NodeBlockPool& pool_b
 ) {
@@ -203,9 +204,15 @@ bool EvictOldestRequest(
         std::string victim = eviction_order.front();
         eviction_order.erase(eviction_order.begin());
 
+        auto active_it = request_active.find(victim);
+        if (active_it != request_active.end() && active_it->second) {
+            std::cout << "Skipping active request " << victim << "\n";
+            continue;
+        }
+
         auto it = request_to_blocks.find(victim);
         if (it == request_to_blocks.end()) {
-            continue;  // stale entry, skip it
+            continue;
         }
 
         NodeBlockPool* victim_pool = nullptr;
@@ -218,12 +225,12 @@ bool EvictOldestRequest(
         }
 
         if (victim_pool == nullptr) {
-            continue;  // malformed mapping, skip it
+            continue;
         }
 
         FreeBlocks(*victim_pool, it->second);
 
-        std::cout << "Evicted oldest request " << victim << " blocks=[";
+        std::cout << "Evicted oldest inactive request " << victim << " blocks=[";
         for (size_t i = 0; i < it->second.size(); ++i) {
             std::cout << it->second[i];
             if (i + 1 < it->second.size()) std::cout << ",";
@@ -237,6 +244,7 @@ bool EvictOldestRequest(
                   << "\n";
 
         request_to_blocks.erase(it);
+        request_active.erase(victim);
         return true;
     }
 
@@ -261,6 +269,8 @@ int ComputePrefixHitTokens(
     // exact hit
     return prompt_tokens;
 }
+
+std::unordered_map<std::string, bool> request_active;
 
 int main() {
 
@@ -707,6 +717,8 @@ if (selected_pool == nullptr) {
               << " reason=best_fit_blocks\n";
 
     auto allocated_req4 = AllocateBlocks(*selected_pool, req4_required_blocks);
+    request_active["req-1"] = true;
+    request_active["req-4"] = false;
 
     if (allocated_req4.empty()) {
         std::cout << "Allocation failed on selected pool\n";
@@ -783,12 +795,7 @@ if (selected_pool_req5 == nullptr) {
 
     std::cout << "Triggering eviction...\n";
 
-    bool evicted = EvictOldestRequest(
-        eviction_order,
-        request_to_blocks,
-        pool_a,
-        pool_b
-    );
+    bool evicted = EvictOldestRequest(eviction_order, request_to_blocks, request_active, pool_a, pool_b);
 
     if (evicted) {
         std::cout << "Retrying allocation for req-5\n";
