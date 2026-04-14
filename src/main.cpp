@@ -72,6 +72,32 @@ std::vector<std::string> AllocateBlocks(NodeBlockPool& pool, int required_blocks
     return allocated;
 }
 
+NodeBlockPool* SelectPoolForRequest(
+    NodeBlockPool& pool_a,
+    NodeBlockPool& pool_b,
+    int required_blocks
+) {
+    std::cout << "Trying " << pool_a.node_id
+              << ": free_blocks=" << pool_a.free_blocks
+              << " required_blocks=" << required_blocks
+              << "\n";
+
+    if (pool_a.free_blocks >= required_blocks) {
+        return &pool_a;
+    }
+
+    std::cout << "Trying " << pool_b.node_id
+              << ": free_blocks=" << pool_b.free_blocks
+              << " required_blocks=" << required_blocks
+              << "\n";
+
+    if (pool_b.free_blocks >= required_blocks) {
+        return &pool_b;
+    }
+
+    return nullptr;
+}
+
 InferenceResult SimulateInference(const InferenceRequest& req) {
     const int routing_overhead_ms = 5;
     const int prefill_cost_per_token = 1;
@@ -550,6 +576,48 @@ if (failed_alloc.empty()) {
               << " free_blocks=" << pool_a.free_blocks
               << " allocated_blocks=" << (pool_a.total_blocks - pool_a.free_blocks)
               << "\n";
+}
+
+
+int req3_kv_mb = 180;
+int req3_required_blocks = RequiredBlocks(req3_kv_mb, pool_a.block_size_mb);
+
+std::cout << "\nAllocating request req-3\n";
+std::cout << "required_kv_mb=" << req3_kv_mb
+          << " required_blocks=" << req3_required_blocks
+          << "\n";
+
+// Optional: make node-a look tighter so node-b gets chosen
+pool_a.free_blocks = 5;
+
+NodeBlockPool* selected_pool =
+    SelectPoolForRequest(pool_a, pool_b, req3_required_blocks);
+
+if (selected_pool == nullptr) {
+    std::cout << "Allocation failed: no node has enough free blocks\n";
+} else {
+    std::cout << "Selected pool=" << selected_pool->node_id << "\n";
+
+    auto allocated_req3 = AllocateBlocks(*selected_pool, req3_required_blocks);
+
+    if (allocated_req3.empty()) {
+        std::cout << "Allocation failed on selected pool\n";
+    } else {
+        request_to_blocks["req-3"] = allocated_req3;
+
+        std::cout << "allocated_blocks=[";
+        for (size_t i = 0; i < allocated_req3.size(); ++i) {
+            std::cout << allocated_req3[i];
+            if (i + 1 < allocated_req3.size()) std::cout << ",";
+        }
+        std::cout << "]\n";
+
+        std::cout << selected_pool->node_id
+                  << " free_blocks=" << selected_pool->free_blocks
+                  << " allocated_blocks="
+                  << (selected_pool->total_blocks - selected_pool->free_blocks)
+                  << "\n";
+    }
 }
 
   return 0;
