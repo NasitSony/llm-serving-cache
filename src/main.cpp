@@ -622,8 +622,25 @@ for (size_t i = 0; i < requests.size(); ++i) {
     prefix_metrics.total_latency_ms += res.total_latency_ms;
 }
 
+BenchmarkMetrics exact_cache_metrics;
+
+for (const auto& req : requests) {
+    InferenceRequest sim_req = req;
+
+    // Exact cache hit: full prompt reused
+    sim_req.prefix_hit_tokens = sim_req.prompt_tokens;
+    exact_cache_metrics.hit_requests++;
+
+    auto res = SimulateInference(sim_req);
+
+    exact_cache_metrics.total_requests++;
+    exact_cache_metrics.total_latency_ms += res.total_latency_ms;
+}
+
 PrintMetrics("No Cache", no_cache_metrics);
+PrintMetrics("Exact Cache", exact_cache_metrics);
 PrintMetrics("Prefix Reuse", prefix_metrics);
+
 
 /*for (const auto& req : requests) {
     auto res = SimulateInference(req);
