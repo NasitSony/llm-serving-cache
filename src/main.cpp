@@ -37,6 +37,13 @@ struct NodeBlockPool {
     std::vector<CacheBlock> blocks;
 };
 
+struct BenchmarkMetrics {
+    int total_requests{0};
+    int total_latency_ms{0};
+    int hit_requests{0};
+    int rejected_requests{0};
+};
+
 std::unordered_map<std::string, std::vector<std::string>> request_to_blocks;
 
 int RequiredBlocks(int kv_size_mb, int block_size_mb) {
@@ -271,6 +278,26 @@ int ComputePrefixHitTokens(
 }
 
 std::unordered_map<std::string, bool> request_active;
+
+void PrintMetrics(const std::string& scenario, const BenchmarkMetrics& metrics) {
+    std::cout << "Scenario: " << scenario << "\n";
+
+    int avg_latency = 0;
+    if (metrics.total_requests > 0) {
+        avg_latency = metrics.total_latency_ms / metrics.total_requests;
+    }
+
+    int hit_rate = 0;
+    int rejection_rate = 0;
+    if (metrics.total_requests > 0) {
+        hit_rate = (100 * metrics.hit_requests) / metrics.total_requests;
+        rejection_rate = (100 * metrics.rejected_requests) / metrics.total_requests;
+    }
+
+    std::cout << "avg_latency=" << avg_latency << " ms\n";
+    std::cout << "hit_rate=" << hit_rate << "%\n";
+    std::cout << "rejection_rate=" << rejection_rate << "%\n\n";
+}
 
 int main() {
 
@@ -549,14 +576,54 @@ if (force_evict.has_value()) {
     }
 }
 
-std::vector<InferenceRequest> requests = {
+/*std::vector<InferenceRequest> requests = {
     {"r1", 1200, 200, 0},   // miss
     {"r2", 1200, 200, 800}, // prefix
     {"r3", 1200, 200, 0},   // miss
     {"r4", 1200, 200, 900}, // prefix
-};
+};*/
 
 int total_latency = 0;
+
+std::vector<InferenceRequest> requests = {
+    {"b1", 1200, 200, 0},
+    {"b2", 1200, 200, 0},
+    {"b3", 1200, 200, 0},
+    {"b4", 1200, 200, 0}
+};
+
+BenchmarkMetrics no_cache_metrics;
+
+for (const auto& req : requests) {
+    InferenceRequest sim_req = req;
+    sim_req.prefix_hit_tokens = 0;
+
+    auto res = SimulateInference(sim_req);
+
+    no_cache_metrics.total_requests++;
+    no_cache_metrics.total_latency_ms += res.total_latency_ms;
+}
+
+BenchmarkMetrics prefix_metrics;
+
+for (size_t i = 0; i < requests.size(); ++i) {
+    InferenceRequest sim_req = requests[i];
+
+    if (i % 2 == 1) {
+        sim_req.prefix_hit_tokens = sim_req.prompt_tokens * 0.7;
+        prefix_metrics.hit_requests++;
+    } else {
+        sim_req.prefix_hit_tokens = 0;
+    }
+
+    auto res = SimulateInference(sim_req);
+
+    prefix_metrics.total_requests++;
+    prefix_metrics.total_latency_ms += res.total_latency_ms;
+}
+
+PrintMetrics("No Cache", no_cache_metrics);
+PrintMetrics("Prefix Reuse", prefix_metrics);
 
 /*for (const auto& req : requests) {
     auto res = SimulateInference(req);
