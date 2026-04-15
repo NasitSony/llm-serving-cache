@@ -481,6 +481,87 @@ Request → KV size → Block allocation → Placement → Free
 
 drive realistic GPU memory behavior in LLM serving systems.
 
+# 🔴 Eviction + Pressure Handling
+
+## Overview
+
+This phase adds pressure handling to the KV cache block system.
+
+When a request cannot be allocated because no node has enough free blocks, the system:
+
+- triggers eviction
+- skips active requests
+- evicts the oldest inactive request
+- retries allocation once
+- rejects the request if eviction is still insufficient
+
+This models realistic overload behavior in LLM serving systems.
+
+
+## Pressure Flow
+
+Under block pressure, the allocator follows this sequence:
+
+```bash
+Allocate request
+→ insufficient free blocks
+→ trigger eviction
+→ skip active requests
+→ evict oldest inactive request
+→ retry allocation
+→ reject if still insufficient
+```
+
+
+## Eviction Policy
+
+A simple oldest-request policy is used as the initial eviction strategy.
+
+**Behavior**
+- requests are tracked in allocation order
+- active requests are protected from eviction
+- inactive requests are eligible for eviction
+- stale eviction entries are skipped safely
+
+
+
+## Example: Pressure Handling Under Overload
+
+```bash
+Triggering eviction...
+Skipping active request req-1
+Evicted oldest inactive request req-4 blocks=[node-a-block-0,node-a-block-1,node-a-block-2,node-a-block-3,node-a-block-4,node-a-block-5,node-a-block-6,node-a-block-7,node-a-block-8,node-a-block-9,node-a-block-10,node-a-block-11]
+node-a free_blocks=20 allocated_blocks=42
+
+Retrying allocation for req-5
+Candidate node-a: free_blocks=20 required_blocks=38 rejected=insufficient_blocks
+Candidate node-b: free_blocks=31 required_blocks=38 rejected=insufficient_blocks
+Rejected request req-5: eviction insufficient
+```
+
+
+## Key Behaviors
+
+- **Eviction is demand-driven**
+- **Triggered only when allocation fails under pressure**
+- **Active requests are protected**
+- **Prevents reclaiming memory from in-use allocations**
+- **Eviction is safe**
+- **Stale queue entries are skipped without corrupting allocator state**
+- **Rejection is explicit**
+- **If eviction cannot free enough space, the request is rejected cleanly**
+
+
+## Summary
+
+This phase makes the system behave more realistically under overload:
+
+```bash
+Pressure → Eviction → Retry → Reject
+```
+
+It demonstrates how a cache-aware memory system can preserve correctness while responding to GPU memory pressure.
+
 
 # 🎯 Why This Matters
 
