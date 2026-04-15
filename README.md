@@ -570,12 +570,15 @@ meaningful numbers
 
 ### Benchmark Results
 
-| Scenario      | Avg Latency (ms) | P95 Latency (ms) | Hit Rate | Rejection Rate |
-|---------------|------------------|------------------|----------|----------------|
-| No Cache      | 1405             | 1405             | 0%       | 0%             |
-| Prefix Reuse  | 985              | 1405             | 50%      | 0%             |
-| Exact Cache   | 205              | 205              | 100%     | 0%             |
-| GPU-Aware     | 843              | 1405             | 25%      | 25%            |
+
+
+| Scenario               | Avg Latency (ms) | P95 Latency (ms) | Hit Rate | Rejection Rate |
+|------------------------|------------------|------------------|----------|----------------|
+| No Cache               | 1405             | 1405             | 0%       | 0%             |
+| Prefix Reuse           | 985              | 1405             | 50%      | 0%             |
+| Exact Cache            | 205              | 205              | 100%     | 0%             |
+| GPU-Aware              | 843              | 1405             | 25%      | 25%            |
+| GPU-Aware + Eviction   | 1895             | 4205             | 25%      | 0%             |
 
 **Observation:**
 - Exact cache reuse eliminates most prefill cost, resulting in the lowest latency.
@@ -583,6 +586,7 @@ meaningful numbers
 - No cache represents the baseline with full prefill cost.
 - Prefix reuse improves average latency, but tail latency remains high when misses are still present in the workload.
 - GPU-aware admission reduces average latency for admitted requests, but introduces rejection under memory pressure. Prefix reuse improves average latency, while tail latency remains sensitive to misses.
+- GPU-aware admission reduces average latency by rejecting oversized requests under memory pressure. Adding eviction lowers rejection rate, but increases average and tail latency by admitting previously rejected expensive requests.
 
 # 🎯 Why This Matters
 
