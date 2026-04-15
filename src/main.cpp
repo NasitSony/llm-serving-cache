@@ -1,5 +1,6 @@
 #include <iostream>
 #include <unordered_map>
+#include <algorithm>
 
 #include "cache/cache_types.h"
 #include "cache/coordinator.h"
@@ -42,6 +43,8 @@ struct BenchmarkMetrics {
     int total_latency_ms{0};
     int hit_requests{0};
     int rejected_requests{0};
+
+    std::vector<int> latencies;  // 👈 NEW
 };
 
 std::unordered_map<std::string, std::vector<std::string>> request_to_blocks;
@@ -294,7 +297,20 @@ void PrintMetrics(const std::string& scenario, const BenchmarkMetrics& metrics) 
         rejection_rate = (100 * metrics.rejected_requests) / metrics.total_requests;
     }
 
+    int p95_latency = 0;
+
+    if (!metrics.latencies.empty()) {
+       std::vector<int> sorted = metrics.latencies;
+       std::sort(sorted.begin(), sorted.end());
+
+       int index = static_cast<int>(0.95 * sorted.size());
+       if (index >= sorted.size()) index = sorted.size() - 1;
+
+       p95_latency = sorted[index];
+    }
+
     std::cout << "avg_latency=" << avg_latency << " ms\n";
+    std::cout << "p95_latency=" << p95_latency << " ms\n";
     std::cout << "hit_rate=" << hit_rate << "%\n";
     std::cout << "rejection_rate=" << rejection_rate << "%\n\n";
 }
@@ -602,6 +618,7 @@ for (const auto& req : requests) {
 
     no_cache_metrics.total_requests++;
     no_cache_metrics.total_latency_ms += res.total_latency_ms;
+    no_cache_metrics.latencies.push_back(res.total_latency_ms);
 }
 
 BenchmarkMetrics prefix_metrics;
@@ -620,6 +637,7 @@ for (size_t i = 0; i < requests.size(); ++i) {
 
     prefix_metrics.total_requests++;
     prefix_metrics.total_latency_ms += res.total_latency_ms;
+    prefix_metrics.latencies.push_back(res.total_latency_ms);
 }
 
 BenchmarkMetrics exact_cache_metrics;
@@ -635,6 +653,7 @@ for (const auto& req : requests) {
 
     exact_cache_metrics.total_requests++;
     exact_cache_metrics.total_latency_ms += res.total_latency_ms;
+    exact_cache_metrics.latencies.push_back(res.total_latency_ms);
 }
 
 PrintMetrics("No Cache", no_cache_metrics);
