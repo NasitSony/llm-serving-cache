@@ -570,18 +570,17 @@ meaningful numbers
 
 ### Benchmark Results
 
-The following results demonstrate the impact of cache reuse on inference latency:
-
-| Scenario        | Avg Latency (ms) | Hit Rate | Rejection Rate |
-|----------------|------------------|----------|----------------|
-| No Cache       | 1405             | 0%       | 0%             |
-| Prefix Reuse   | 985              | 50%      | 0%             |
-| Exact Cache    | 205              | 100%     | 0%             |
+| Scenario      | Avg Latency (ms) | P95 Latency (ms) | Hit Rate | Rejection Rate |
+|---------------|------------------|------------------|----------|----------------|
+| No Cache      | 1405             | 1405             | 0%       | 0%             |
+| Prefix Reuse  | 985              | 1405             | 50%      | 0%             |
+| Exact Cache   | 205              | 205              | 100%     | 0%             |
 
 **Observation:**
 - Exact cache reuse eliminates most prefill cost, resulting in the lowest latency.
 - Prefix reuse provides partial improvement proportional to reused tokens.
 - No cache represents the baseline with full prefill cost.
+- Prefix reuse improves average latency, but tail latency remains high when misses are still present in the workload.
 
 # 🎯 Why This Matters
 
