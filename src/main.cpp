@@ -656,9 +656,43 @@ for (const auto& req : requests) {
     exact_cache_metrics.latencies.push_back(res.total_latency_ms);
 }
 
+BenchmarkMetrics gpu_metrics;
+
+std::vector<InferenceRequest> gpu_requests = {
+    {"g1", 1200, 200, 0},   // fits
+    {"g2", 1200, 200, 840}, // prefix reuse
+    {"g3", 10000, 200, 0},  // too large, should reject
+    {"g4", 1200, 200, 0}    // fits
+};
+
+
+for (const auto& req : gpu_requests) {
+    int required_kv_mb = cache::estimate_kv_cache_mb(req.prompt_tokens);
+
+    // 🔥 SIMPLE FIT CHECK GOES HERE
+    bool fits = required_kv_mb <= 500;
+
+    gpu_metrics.total_requests++;
+
+    if (!fits) {
+        gpu_metrics.rejected_requests++;
+        continue;
+    }
+
+    if (req.prefix_hit_tokens > 0) {
+        gpu_metrics.hit_requests++;
+    }
+
+    auto res = SimulateInference(req);
+
+    gpu_metrics.total_latency_ms += res.total_latency_ms;
+    gpu_metrics.latencies.push_back(res.total_latency_ms);
+}
+
 PrintMetrics("No Cache", no_cache_metrics);
 PrintMetrics("Exact Cache", exact_cache_metrics);
 PrintMetrics("Prefix Reuse", prefix_metrics);
+PrintMetrics("GPU-Aware", gpu_metrics);
 
 
 /*for (const auto& req : requests) {
