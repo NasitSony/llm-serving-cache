@@ -575,12 +575,14 @@ meaningful numbers
 | No Cache      | 1405             | 1405             | 0%       | 0%             |
 | Prefix Reuse  | 985              | 1405             | 50%      | 0%             |
 | Exact Cache   | 205              | 205              | 100%     | 0%             |
+| GPU-Aware     | 843              | 1405             | 25%      | 25%            |
 
 **Observation:**
 - Exact cache reuse eliminates most prefill cost, resulting in the lowest latency.
 - Prefix reuse provides partial improvement proportional to reused tokens.
 - No cache represents the baseline with full prefill cost.
 - Prefix reuse improves average latency, but tail latency remains high when misses are still present in the workload.
+- GPU-aware admission reduces average latency for admitted requests, but introduces rejection under memory pressure. Prefix reuse improves average latency, while tail latency remains sensitive to misses.
 
 # 🎯 Why This Matters
 
