@@ -689,10 +689,57 @@ for (const auto& req : gpu_requests) {
     gpu_metrics.latencies.push_back(res.total_latency_ms);
 }
 
+
+BenchmarkMetrics gpu_eviction_metrics;
+
+std::vector<InferenceRequest> gpu_eviction_requests = {
+    {"ge1", 1200, 200, 0},
+    {"ge2", 1200, 200, 840},
+    {"ge3", 4000, 200, 0},   // pressure request
+    {"ge4", 1200, 200, 0}
+};
+
+int available_kv_mb = 500;
+int evictable_kv_mb = 200;  // one simple eviction recovers 200 MB
+
+for (const auto& req : gpu_eviction_requests) {
+    int required_kv_mb = cache::estimate_kv_cache_mb(req.prompt_tokens);
+
+    gpu_eviction_metrics.total_requests++;
+
+    bool fits = required_kv_mb <= available_kv_mb;
+
+    if (!fits) {
+        // Try one eviction
+        available_kv_mb += evictable_kv_mb;
+
+        bool fits_after_eviction = required_kv_mb <= available_kv_mb;
+        if (!fits_after_eviction) {
+            gpu_eviction_metrics.rejected_requests++;
+            continue;
+        }
+    }
+
+    // Consume KV budget for admitted request
+    available_kv_mb -= required_kv_mb;
+    if (available_kv_mb < 0) {
+        available_kv_mb = 0;
+    }
+
+    if (req.prefix_hit_tokens > 0) {
+        gpu_eviction_metrics.hit_requests++;
+    }
+
+    auto res = SimulateInference(req);
+    gpu_eviction_metrics.total_latency_ms += res.total_latency_ms;
+    gpu_eviction_metrics.latencies.push_back(res.total_latency_ms);
+}
+
 PrintMetrics("No Cache", no_cache_metrics);
 PrintMetrics("Exact Cache", exact_cache_metrics);
 PrintMetrics("Prefix Reuse", prefix_metrics);
 PrintMetrics("GPU-Aware", gpu_metrics);
+PrintMetrics("GPU-Aware + Eviction", gpu_eviction_metrics);
 
 
 /*for (const auto& req : requests) {
