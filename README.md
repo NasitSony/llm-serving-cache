@@ -12,6 +12,12 @@ A simulated GPU-aware LLM inference system that models:
 
 Includes comparative benchmarks across cache strategies and GPU-aware admission policies.
 
+## System Pipeline
+
+```bash
+Workload → Router → Cache Reuse → GPU Memory → Block Allocation → Eviction → Inference → Latency
+```
+
 ## 🎯 Why This Matters
 
 This project models a **real AI inference control plane**, focusing on:
@@ -22,6 +28,35 @@ This project models a **real AI inference control plane**, focusing on:
 • ensuring correctness under failure
 • maintaining consistent distributed state
 ```
+
+# Benchmark Results
+
+
+
+| Scenario               | Avg Latency (ms) | P95 Latency (ms) | Hit Rate | Rejection Rate |
+|------------------------|------------------|------------------|----------|----------------|
+| No Cache               | 1405             | 1405             | 0%       | 0%             |
+| Prefix Reuse           | 985              | 1405             | 50%      | 0%             |
+| Exact Cache            | 205              | 205              | 100%     | 0%             |
+| GPU-Aware              | 843              | 1405             | 25%      | 25%            |
+| GPU-Aware + Eviction   | 1895             | 4205             | 25%      | 0%             |
+
+
+**Observation:**
+- Exact cache reuse eliminates most prefill cost, resulting in the lowest latency.
+- Prefix reuse provides partial improvement proportional to reused tokens.
+- No cache represents the baseline with full prefill cost.
+- Prefix reuse improves average latency, but tail latency remains high when misses are still present in the workload.
+- GPU-aware admission reduces average latency for admitted requests, but introduces rejection under memory pressure. Prefix reuse improves average latency, while tail latency remains sensitive to misses.
+- GPU-aware admission reduces average latency by rejecting oversized requests under memory pressure. Adding eviction lowers rejection rate, but increases average and tail latency by admitting previously rejected expensive requests.
+
+# Key Insights
+
+- Exact cache reuse reduces latency by ~85% vs no cache
+- Prefix reuse improves average latency but not tail latency (p95 remains high)
+- GPU-aware admission reduces latency by rejecting oversized requests
+- Eviction reduces rejection but increases latency by admitting expensive requests
+
 
 
 # 🧠 Motivation
@@ -52,119 +87,8 @@ llm-serving-cache is the **inference serving layer** of a layered AI infrastruct
 
 This project depends on **VeriStore** ([github.com/NasitSony/VeriStore](https://github.com/NasitSony/VeriStore)) as its durable metadata backend — all cache entries, session routes, and node registry state are persisted using VeriStore's WAL-backed KV engine, inheriting its crash-consistency and deterministic recovery guarantees.
 
-### Benchmark Results
 
-
-
-| Scenario               | Avg Latency (ms) | P95 Latency (ms) | Hit Rate | Rejection Rate |
-|------------------------|------------------|------------------|----------|----------------|
-| No Cache               | 1405             | 1405             | 0%       | 0%             |
-| Prefix Reuse           | 985              | 1405             | 50%      | 0%             |
-| Exact Cache            | 205              | 205              | 100%     | 0%             |
-| GPU-Aware              | 843              | 1405             | 25%      | 25%            |
-| GPU-Aware + Eviction   | 1895             | 4205             | 25%      | 0%             |
-
-**Observation:**
-- Exact cache reuse eliminates most prefill cost, resulting in the lowest latency.
-- Prefix reuse provides partial improvement proportional to reused tokens.
-- No cache represents the baseline with full prefill cost.
-- Prefix reuse improves average latency, but tail latency remains high when misses are still present in the workload.
-- GPU-aware admission reduces average latency for admitted requests, but introduces rejection under memory pressure. Prefix reuse improves average latency, while tail latency remains sensitive to misses.
-- GPU-aware admission reduces average latency by rejecting oversized requests under memory pressure. Adding eviction lowers rejection rate, but increases average and tail latency by admitting previously rejected expensive requests.
-
-
-
-
-## Overview
-
-This project includes a mock inference engine that simulates the latency impact of KV cache reuse in LLM serving systems.
-
-The simulation models:
-
-• routing overhead
-• prefill (prompt processing) cost
-• decode (generation) cost
-• cache reuse via prefix matching
-
-## Latency Model
-
-Each request is defined by:
-
-• prompt_tokens
-• output_tokens
-• prefix_hit_tokens
-
-Derived:
-
-```bash
-uncached_tokens = prompt_tokens - prefix_hit_tokens
-```
-
-Latency is computed as:
-
-```bash
-prefill_latency  = uncached_tokens × prefill_cost
-decode_latency   = output_tokens × decode_cost
-
-total_latency =
-    routing_overhead +
-    prefill_latency +
-    decode_latency
-```
-
-## Workload
-
-A mixed workload of requests is simulated, including:
-
-• cache misses (no reuse)
-• prefix hits (partial reuse)
-
-Routing decisions determine cache reuse, which directly affects latency.
-
-## Results
-
-```bash
-Eligible nodes: none
-Rejected request: insufficient VRAM across all nodes required_kv_mb=1000
-
-Average latency: 980 ms
-Hit rate: 50%
-Average hit latency: 555 ms
-Average miss latency: 1405 ms
-```
-## Analysis
-
-• Cache hits significantly reduce latency (~2.5× lower than misses)
-• Prefill cost dominates latency for cache misses
-• Prefix reuse reduces uncached tokens, lowering total latency
-• Overall system latency improves with higher cache hit rates
-
-## Key Takeaways
-
-• KV cache reuse is critical for efficient LLM serving
-• Routing decisions impact end-to-end latency, not just placement
-• GPU memory constraints influence both admission and performance
-• Even simple cache-aware policies yield substantial gains
-
-## Summary
-
-This simulation demonstrates how:
-
-```bash
-Routing → Cache reuse → GPU memory → Latency
-```
-
-are tightly coupled in LLM serving systems.
-
-## Key Insights
-
-- Exact cache reuse reduces latency by ~85% vs no cache
-- Prefix reuse improves average latency but not tail latency (p95 remains high)
-- GPU-aware admission reduces latency by rejecting oversized requests
-- Eviction reduces rejection but increases latency by admitting expensive requests
-
-
-# 🟠 KV Cache Block System
+# 🟠 KV Cache Memory Model
 
 ## Overview
 
@@ -337,8 +261,6 @@ A simple oldest-request policy is used as the initial eviction strategy.
 - inactive requests are eligible for eviction
 - stale eviction entries are skipped safely
 
-
-
 ## Example: Pressure Handling Under Overload
 
 ```bash
@@ -468,6 +390,94 @@ Update node capacity
       ↓
 KV-backed Metadata Store (WAL)
 ```
+
+
+## Overview
+
+This project includes a mock inference engine that simulates the latency impact of KV cache reuse in LLM serving systems.
+
+The simulation models:
+
+• routing overhead
+• prefill (prompt processing) cost
+• decode (generation) cost
+• cache reuse via prefix matching
+
+## Latency Model
+
+Each request is defined by:
+
+• prompt_tokens
+• output_tokens
+• prefix_hit_tokens
+
+Derived:
+
+```bash
+uncached_tokens = prompt_tokens - prefix_hit_tokens
+```
+
+Latency is computed as:
+
+```bash
+prefill_latency  = uncached_tokens × prefill_cost
+decode_latency   = output_tokens × decode_cost
+
+total_latency =
+    routing_overhead +
+    prefill_latency +
+    decode_latency
+```
+
+## Workload
+
+A mixed workload of requests is simulated, including:
+
+• cache misses (no reuse)
+• prefix hits (partial reuse)
+
+Routing decisions determine cache reuse, which directly affects latency.
+
+## Results
+
+```bash
+Eligible nodes: none
+Rejected request: insufficient VRAM across all nodes required_kv_mb=1000
+
+Average latency: 980 ms
+Hit rate: 50%
+Average hit latency: 555 ms
+Average miss latency: 1405 ms
+```
+## Analysis
+
+• Cache hits significantly reduce latency (~2.5× lower than misses)
+• Prefill cost dominates latency for cache misses
+• Prefix reuse reduces uncached tokens, lowering total latency
+• Overall system latency improves with higher cache hit rates
+
+## Key Takeaways
+
+• KV cache reuse is critical for efficient LLM serving
+• Routing decisions impact end-to-end latency, not just placement
+• GPU memory constraints influence both admission and performance
+• Even simple cache-aware policies yield substantial gains
+
+## Summary
+
+This simulation demonstrates how:
+
+```bash
+Routing → Cache reuse → GPU memory → Latency
+```
+
+are tightly coupled in LLM serving systems.
+
+
+
+
+
+
 
 # ✨ Features Implemented
 
