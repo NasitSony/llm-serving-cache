@@ -52,8 +52,28 @@ llm-serving-cache is the **inference serving layer** of a layered AI infrastruct
 
 This project depends on **VeriStore** ([github.com/NasitSony/VeriStore](https://github.com/NasitSony/VeriStore)) as its durable metadata backend — all cache entries, session routes, and node registry state are persisted using VeriStore's WAL-backed KV engine, inheriting its crash-consistency and deterministic recovery guarantees.
 
+### Benchmark Results
 
-# 📊 Benchmark: Cache-Aware Inference Simulation
+
+
+| Scenario               | Avg Latency (ms) | P95 Latency (ms) | Hit Rate | Rejection Rate |
+|------------------------|------------------|------------------|----------|----------------|
+| No Cache               | 1405             | 1405             | 0%       | 0%             |
+| Prefix Reuse           | 985              | 1405             | 50%      | 0%             |
+| Exact Cache            | 205              | 205              | 100%     | 0%             |
+| GPU-Aware              | 843              | 1405             | 25%      | 25%            |
+| GPU-Aware + Eviction   | 1895             | 4205             | 25%      | 0%             |
+
+**Observation:**
+- Exact cache reuse eliminates most prefill cost, resulting in the lowest latency.
+- Prefix reuse provides partial improvement proportional to reused tokens.
+- No cache represents the baseline with full prefill cost.
+- Prefix reuse improves average latency, but tail latency remains high when misses are still present in the workload.
+- GPU-aware admission reduces average latency for admitted requests, but introduces rejection under memory pressure. Prefix reuse improves average latency, while tail latency remains sensitive to misses.
+- GPU-aware admission reduces average latency by rejecting oversized requests under memory pressure. Adding eviction lowers rejection rate, but increases average and tail latency by admitting previously rejected expensive requests.
+
+
+
 
 ## Overview
 
@@ -599,25 +619,6 @@ Evicted cache block from node: node-b
 comparative results  
 meaningful numbers  
 
-### Benchmark Results
-
-
-
-| Scenario               | Avg Latency (ms) | P95 Latency (ms) | Hit Rate | Rejection Rate |
-|------------------------|------------------|------------------|----------|----------------|
-| No Cache               | 1405             | 1405             | 0%       | 0%             |
-| Prefix Reuse           | 985              | 1405             | 50%      | 0%             |
-| Exact Cache            | 205              | 205              | 100%     | 0%             |
-| GPU-Aware              | 843              | 1405             | 25%      | 25%            |
-| GPU-Aware + Eviction   | 1895             | 4205             | 25%      | 0%             |
-
-**Observation:**
-- Exact cache reuse eliminates most prefill cost, resulting in the lowest latency.
-- Prefix reuse provides partial improvement proportional to reused tokens.
-- No cache represents the baseline with full prefill cost.
-- Prefix reuse improves average latency, but tail latency remains high when misses are still present in the workload.
-- GPU-aware admission reduces average latency for admitted requests, but introduces rejection under memory pressure. Prefix reuse improves average latency, while tail latency remains sensitive to misses.
-- GPU-aware admission reduces average latency by rejecting oversized requests under memory pressure. Adding eviction lowers rejection rate, but increases average and tail latency by admitting previously rejected expensive requests.
 
 
 # 📌 Status
