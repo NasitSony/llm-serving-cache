@@ -31,7 +31,9 @@ This project models a **real AI inference control plane**, focusing on:
 
 ## 📊 Benchmark Results (Key Results)
 
+The results below demonstrate how cache reuse and GPU memory constraints shape LLM inference performance.
 
+We compare baseline inference, prefix reuse, exact cache hits, and GPU-aware admission with and without eviction.
 
 | Scenario               | Avg Latency (ms) | P95 Latency (ms) | Hit Rate | Rejection Rate |
 |------------------------|------------------|------------------|----------|----------------|
