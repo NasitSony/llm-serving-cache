@@ -29,7 +29,7 @@ This project models a **real AI inference control plane**, focusing on:
 • maintaining consistent distributed state
 ```
 
-# 📊 Benchmark Results
+## 📊 Benchmark Results (Key Results)
 
 
 
