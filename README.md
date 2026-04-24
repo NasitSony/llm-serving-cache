@@ -59,7 +59,40 @@ We compare baseline inference, prefix reuse, exact cache hits, and GPU-aware adm
 - GPU-aware admission reduces latency by rejecting oversized requests
 - Eviction reduces rejection but increases latency by admitting expensive requests
 
+## Real Inference Validation (Ollama)
 
+To validate the serving model, I integrated Ollama as a real inference backend and ran controlled experiments.
+
+### Setup
+
+- Model: llama3.1:8b (Ollama)
+- Controlled prompts (fixed output length)
+- Scenarios:
+  - Cold request
+  - Warm request (same prompt)
+  - Prefix-related prompt
+  - Unrelated prompt
+
+### Results
+
+| Scenario   | Total Latency | Prompt Eval | Decode |
+|------------|--------------|-------------|--------|
+| cold_1     | ~8488 ms     | 177 ms      | 5238 ms |
+| warm_1     | ~5520 ms     | 47 ms       | 5372 ms |
+| prefix_1   | ~5891 ms     | 47 ms       | 5747 ms |
+| prefix_2   | ~5825 ms     | 160 ms      | 5570 ms |
+| diff_1     | ~1891 ms     | 163 ms      | 1653 ms |
+
+### Key Observations
+
+- Warm requests significantly reduce prompt evaluation latency
+- End-to-end latency is dominated by decode (generation) time
+- Prefix similarity alone does not reduce total latency without controlling output size
+- Output length is a primary driver of latency in real inference systems
+
+### Takeaway
+
+While prefix-aware caching reduces prefill cost, real-world LLM serving performance is largely governed by generation cost. This highlights the importance of combining caching with efficient decoding strategies.
 
 # 🧠 Motivation
 
