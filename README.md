@@ -94,6 +94,22 @@ To validate the serving model, I integrated Ollama as a real inference backend a
 
 While prefix-aware caching reduces prefill cost, real-world LLM serving performance is largely governed by generation cost. This highlights the importance of combining caching with efficient decoding strategies.
 
+### Stability Across Runs
+
+Repeated experiments produced consistent latency ranges:
+
+- prefix_1: ~5.1–5.3s
+- prefix_2: ~5.8–6.0s
+- diff_1: ~1.7s
+
+This confirms that observed behavior is stable and not due to random variance.
+
+### Final Insight
+
+While prefix-aware caching reduces prompt evaluation cost, real-world LLM latency is dominated by token generation. This highlights that effective serving optimization must address decode efficiency, not just prompt reuse.
+
+
+
 # 🧠 Motivation
 
 Large Language Model inference can be significantly accelerated through **KV-cache reuse.**
