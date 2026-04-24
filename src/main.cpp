@@ -452,11 +452,13 @@ int main() {
     BenchmarkMetrics exact_cache;
 
     std::vector<InferenceRequest> requests = {
-       {"cold_1", 400, 120, 0, "Explain distributed systems"},
-       {"warm_1", 400, 120, 0, "Explain distributed systems"},
-       {"prefix_1", 400, 120, 0, "Explain distributed systems"},
-       {"prefix_2", 520, 140, 0, "Explain distributed systems with examples"},
-       {"diff_1", 300, 100, 0, "Write a short poem about the ocean"}
+        {"cold_1", 400, 50, 0, "Explain distributed systems in 3 sentences"},
+        {"warm_1", 400, 50, 0, "Explain distributed systems in 3 sentences"},
+
+        {"prefix_1", 400, 50, 0, "Explain distributed systems in 3 sentences"},
+        {"prefix_2", 450, 50, 0, "Explain distributed systems with examples in 3 sentences"},
+
+       {"diff_1", 300, 50, 0, "Write a short poem about the ocean in 3 sentences"}
     };
 
     std::cout << "\nREACHED BENCHMARK SECTION\n" << std::flush;
@@ -493,6 +495,10 @@ int main() {
         no_cache.total_requests++;
         no_cache.total_latency_ms += res.total_latency_ms;
         no_cache.latencies.push_back(res.total_latency_ms);
+    }
+    std::cout << "\n=== Summary ===\n";
+    for (const auto& r : requests) {
+            std::cout << r.request_id << "\n";
     }
 
     PrintMetrics("No Cache", no_cache);
