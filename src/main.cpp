@@ -2,6 +2,13 @@
 #include <unordered_map>
 #include <algorithm>
 
+#include <cstdio>
+#include <memory>
+#include <array>
+#include <string>
+
+
+
 /*
  * ================================================================
  * LLM Cache + GPU-Aware Serving Simulator
@@ -26,6 +33,10 @@
 #include "cache/node_registry.h"
 #include "cache/placement_policy.h"
 #include "cache/router.h"
+#include "cache/inference_backend.h"
+
+#include "simulated_inference_backend.cpp"
+#include "ollama_inference_backend.cpp"
 
 
 
@@ -39,24 +50,24 @@
  * prefix_hit_tokens:
  *   number of tokens reused from cache (prefix reuse)
  */
-struct InferenceRequest {
+/*struct InferenceRequest {
     std::string request_id;
     int prompt_tokens{0};
     int output_tokens{0};
     int prefix_hit_tokens{0};
-};
+};*/
 
 /*
  * Latency breakdown of an inference request.
  *
  * total = routing + prefill + decode
  */
-struct InferenceResult {
+/*struct InferenceResult {
     int uncached_tokens{0};
     int prefill_latency_ms{0};
     int decode_latency_ms{0};
     int total_latency_ms{0};
-};
+};*/
 
 
 
@@ -124,6 +135,46 @@ std::unordered_map<std::string, bool> request_active;
  */
 int RequiredBlocks(int kv_size_mb, int block_size_mb) {
     return (kv_size_mb + block_size_mb - 1) / block_size_mb;
+}
+
+NodeBlockPool InitBlockPool(const cache::ServingNode& node, int block_size_mb) {
+    NodeBlockPool pool;
+    pool.node_id = node.node_id;
+    pool.block_size_mb = block_size_mb;
+
+    pool.total_blocks = node.total_vram_mb / block_size_mb;
+    pool.free_blocks = pool.total_blocks;
+
+    for (int i = 0; i < pool.total_blocks; i++) {
+        CacheBlock block;
+        block.block_id = node.node_id + "-block-" + std::to_string(i);
+        pool.blocks.push_back(block);
+    }
+
+    return pool;
+}
+
+std::string RunOllamaPrompt(const std::string& prompt) {
+    std::string cmd =
+        "curl -s http://localhost:11434/api/generate -d '{"
+        "\"model\": \"llama3.1:8b\","
+        "\"prompt\": \"" + prompt + "\","
+        "\"stream\": false"
+        "}'";
+
+    std::array<char, 256> buffer{};
+    std::string result;
+
+    std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd.c_str(), "r"), pclose);
+    if (!pipe) {
+        return "ERROR: failed to run curl";
+    }
+
+    while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
+        result += buffer.data();
+    }
+
+    return result;
 }
 
 /*
@@ -401,14 +452,43 @@ int main() {
     BenchmarkMetrics exact_cache;
 
     std::vector<InferenceRequest> requests = {
-        {"r1",1200,200,0},
-        {"r2",1200,200,800},
-        {"r3",1200,200,0},
-        {"r4",1200,200,900},
+       {"cold_1", 400, 120, 0, "Explain distributed systems"},
+       {"warm_1", 400, 120, 0, "Explain distributed systems"},
+       {"prefix_1", 400, 120, 0, "Explain distributed systems"},
+       {"prefix_2", 520, 140, 0, "Explain distributed systems with examples"},
+       {"diff_1", 300, 100, 0, "Write a short poem about the ocean"}
     };
 
+    std::cout << "\nREACHED BENCHMARK SECTION\n" << std::flush;
+
     for (auto& r : requests) {
-        auto res = SimulateInference(r);
+        //auto res = SimulateInference(r);
+
+        std::unique_ptr<InferenceBackend> backend;
+
+        // 🔥 choose mode
+        bool use_ollama = true;
+
+        if (use_ollama) {
+           backend = std::make_unique<OllamaInferenceBackend>();
+        } else {
+           backend = std::make_unique<SimulatedInferenceBackend>();
+        }
+
+        auto res = backend->Run(r);
+
+        std::cout << "\n=== Real Ollama Result ===\n";
+        std::cout << "request=" << r.request_id << "\n";
+        std::cout << "response=" << res.response_text << "\n";
+        std::cout << "total_latency_ms=" << res.total_latency_ms << "\n";
+        std::cout << "prompt_eval_ms=" << res.prefill_latency_ms << "\n";
+        std::cout << "eval_ms=" << res.decode_latency_ms << "\n";
+
+        std::cout << "[real] request=" << r.request_id
+          << " total_ms=" << res.total_latency_ms
+          << " prompt_ms=" << res.prefill_latency_ms
+          << " eval_ms=" << res.decode_latency_ms
+          << "\n";
 
         no_cache.total_requests++;
         no_cache.total_latency_ms += res.total_latency_ms;
@@ -423,6 +503,8 @@ int main() {
      *   - eviction
      *   - block allocation
      */
+
+       
 
     return 0;
 }

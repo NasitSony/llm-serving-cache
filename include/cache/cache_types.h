@@ -42,9 +42,18 @@ struct ServingNode {
     }
 };
 
+enum class RouteType {
+    ExactHit,
+    PrefixHit,
+    Miss,
+    Rejected
+};
+
 struct RoutingDecision {
     std::string node_id;
+    RouteType type{RouteType::Miss};
     bool cache_hit{false};
+    int reusable_tokens{0};
 };
 
 } // namespace cache
