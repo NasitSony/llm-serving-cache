@@ -160,6 +160,55 @@ This experiment shows why production LLM serving systems need batching, scheduli
 
 Note: Recovery time here measures lookup after WAL load, not full process restart recovery.
 
+## WAL-Backed Cache Metadata Recovery Benchmark
+
+This project uses a WAL-backed key-value store (VeriStore) to persist LLM cache metadata (prefix → KV blocks, session routing).
+
+### Benchmark Setup
+
+- Local WAL-backed KV store
+- Metadata operations:
+  - Cache entry registration
+  - Prefix lookup
+- Recovery measured by:
+  - WAL open / replay time
+  - Metadata lookup after restart
+
+### Results (Measured)
+
+| Entries | Write (ms) | Startup Recovery (ms) | Lookup (ms) | Total Recovery (ms) |
+|--------:|-----------:|---------------------:|------------:|--------------------:|
+| 100     | 2 ms       | 0 ms                 | 0 ms        | ~7 ms               |
+| 1,000   | 12 ms      | 3 ms                 | 2 ms        | ~9 ms               |
+| 5,000   | 35 ms      | 9 ms                 | 8 ms        | ~20 ms              |
+
+### Key Observations
+
+- WAL replay is fast even with thousands of entries.
+- Metadata recovery scales efficiently with number of entries.
+- Total recovery time remains in the millisecond range.
+
+### Comparison to Inference
+
+Real LLM inference latency (Llama 3.1 8B via Ollama):
+
+- ~5,000–8,000 ms per request
+
+### Insight
+
+> Storage (WAL-backed metadata) is not the bottleneck in LLM serving.
+>
+> - During serving → inference dominates latency  
+> - During recovery → storage determines system availability  
+
+### Takeaway
+
+Cache persistence enables fast recovery without significantly impacting serving latency.
+
+This demonstrates that:
+- KV cache metadata can be safely persisted
+- Systems can recover quickly after failure
+- Inference remains the dominant cost in LLM serving
 
 
 # 🧠 Motivation
