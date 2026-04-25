@@ -109,6 +109,48 @@ This confirms that observed behavior is stable and not due to random variance.
 While prefix-aware caching reduces prompt evaluation cost, real-world LLM latency is dominated by token generation. This highlights that effective serving optimization must address decode efficiency, not just prompt reuse.
 
 
+## Concurrent Real Inference Benchmark
+
+To evaluate serving behavior under load, I added a concurrent Ollama inference benchmark.
+
+### Setup
+
+- Model: Llama 3.1 8B via Ollama
+- Prompt: fixed output length
+- Workload: same prompt across concurrent requests
+- Metric: average latency, p95 latency, wall-clock time, throughput
+
+### Results
+
+| Concurrency | Avg Latency | P95 Latency | Wall Clock | Throughput |
+|------------:|------------:|------------:|-----------:|-----------:|
+| 1 | 5,771 ms | 5,771 ms | 5,794 ms | 0.17 req/s |
+| 3 | 10,963 ms | 16,299 ms | 16,310 ms | 0.18 req/s |
+| 5 | 16,560 ms | 27,744 ms | 27,758 ms | 0.18 req/s |
+| 10 | 29,040 ms | 53,525 ms | 53,543 ms | 0.19 req/s |
+
+### Key Observations
+
+- Average latency increases as concurrency grows.
+- P95 latency grows much faster than average latency.
+- Throughput remains almost flat even with 10x more concurrent requests.
+- Wall-clock time closely follows p95 latency, suggesting requests are contending for the same inference runtime resource.
+
+### Takeaway
+
+Single-request latency is misleading.
+
+Real LLM serving behavior is shaped by:
+
+- queueing
+- runtime contention
+- scheduling
+- GPU utilization
+- tail latency
+
+This experiment shows why production LLM serving systems need batching, scheduling, and admission control rather than only cache reuse.
+
+
 
 # 🧠 Motivation
 
