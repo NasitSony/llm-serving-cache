@@ -150,6 +150,14 @@ Real LLM serving behavior is shaped by:
 
 This experiment shows why production LLM serving systems need batching, scheduling, and admission control rather than only cache reuse.
 
+## Storage Benchmark (VeriStore-backed Metadata)
+
+| Entries | Write (ms) | Recovery Lookup (ms) |
+|--------:|-----------:|--------------------:|
+| 100     | 2 ms       | ~0 ms               |
+| 1000    | ~10 ms     | ~2–4 ms             |
+| 5000    | 37 ms      | 10 ms               |
+
 
 
 # 🧠 Motivation
