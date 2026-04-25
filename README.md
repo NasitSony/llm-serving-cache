@@ -158,6 +158,8 @@ This experiment shows why production LLM serving systems need batching, scheduli
 | 1000    | ~10 ms     | ~2–4 ms             |
 | 5000    | 37 ms      | 10 ms               |
 
+Note: Recovery time here measures lookup after WAL load, not full process restart recovery.
+
 
 
 # 🧠 Motivation
