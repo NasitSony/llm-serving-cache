@@ -7,6 +7,9 @@
 #include <array>
 #include <string>
 
+#include <future>
+#include <chrono>
+
 
 
 /*
@@ -346,12 +349,112 @@ void PrintMetrics(const std::string& scenario, const BenchmarkMetrics& m) {
 }
 
 
+std::vector<InferenceRequest> BuildConcurrentRequests(int concurrency) {
+    std::vector<InferenceRequest> requests;
+
+    for (int i = 0; i < concurrency; i++) {
+        requests.push_back({
+            "concurrent_" + std::to_string(i),
+            400,
+            50,
+            0,
+            "Explain distributed systems in 3 sentences"
+        });
+    }
+
+    return requests;
+}
+
+void RunConcurrentBenchmark(int concurrency) {
+    auto requests = BuildConcurrentRequests(concurrency);
+
+    auto wall_start = std::chrono::steady_clock::now();
+
+    std::vector<std::future<InferenceResult>> futures;
+
+    for (auto req : requests) {
+        futures.push_back(std::async(std::launch::async, [req]() {
+            OllamaInferenceBackend backend;
+            return backend.Run(req);
+        }));
+    }
+
+    std::vector<int> latencies;
+
+    for (auto& f : futures) {
+        auto res = f.get();
+        latencies.push_back(res.total_latency_ms);
+
+        std::cout << "[concurrent] total_ms=" << res.total_latency_ms
+                  << " prompt_ms=" << res.prefill_latency_ms
+                  << " eval_ms=" << res.decode_latency_ms
+                  << "\n";
+    }
+
+    auto wall_end = std::chrono::steady_clock::now();
+    auto wall_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+        wall_end - wall_start
+    ).count();
+
+    std::sort(latencies.begin(), latencies.end());
+
+    int total = 0;
+    for (int x : latencies) total += x;
+
+    int avg = latencies.empty() ? 0 : total / latencies.size();
+    int p95 = latencies.empty() ? 0 : latencies[
+        std::min(
+            static_cast<int>(latencies.size()) - 1,
+            static_cast<int>(0.95 * latencies.size())
+        )
+    ];
+
+    double throughput = wall_ms == 0
+        ? 0.0
+        : static_cast<double>(concurrency) * 1000.0 / wall_ms;
+
+    std::cout << "\n=== Concurrent Inference Benchmark ===\n";
+    std::cout << "concurrency=" << concurrency << "\n";
+    std::cout << "avg_latency_ms=" << avg << "\n";
+    std::cout << "p95_latency_ms=" << p95 << "\n";
+    std::cout << "wall_clock_ms=" << wall_ms << "\n";
+    std::cout << "throughput_req_per_sec=" << throughput << "\n";
+}
 
 // ================================================================
 // MAIN: System Simulation
 // ================================================================
+int main(int argc, char* argv[])  {
 
-int main() {
+    bool run_concurrency = false;
+    int concurrency = 1;
+    std::string mode = "sim";
+
+    for (int i = 1; i < argc; i++) {
+        std::string arg = argv[i];
+
+        if (arg == "--benchmark=concurrency") {
+            run_concurrency = true;
+        }
+
+        if (arg.rfind("--concurrency=", 0) == 0) {
+            concurrency = std::stoi(arg.substr(std::string("--concurrency=").size()));
+        }
+
+        if (arg.rfind("--mode=", 0) == 0) {
+            mode = arg.substr(std::string("--mode=").size());
+        }
+    }
+
+    std::cout << "[config] mode=" << mode
+              << " benchmark=" << (run_concurrency ? "concurrency" : "default")
+              << " concurrency=" << concurrency << "\n";
+
+
+    if (run_concurrency) {
+       RunConcurrentBenchmark(concurrency);
+       return 0;
+    }         
 
     // --------------------------------------------------
     // Control plane setup
