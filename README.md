@@ -211,6 +211,29 @@ This demonstrates that:
 - Inference remains the dominant cost in LLM serving
 
 
+## 🔥 Overload & Admission Control
+
+To simulate real system pressure:
+
+```bash
+--concurrency=10 --max-active=3
+
+| Metric      | No Control | With Control |
+| ----------- | ---------- | ------------ |
+| Accepted    | 10         | 3            |
+| Rejected    | 0          | 7            |
+| P95 Latency | ~53.5s     | ~20.7s       |
+| Throughput  | ~0.18      | ~0.15        |
+
+
+Insight
+Accepting all requests → queue grows → latency explodes
+Limiting active requests → queue stays small → latency controlled
+
+Good systems don’t try to serve everyone
+They protect latency by rejecting excess load
+
+
 # 🧠 Motivation
 
 Large Language Model inference can be significantly accelerated through **KV-cache reuse.**
