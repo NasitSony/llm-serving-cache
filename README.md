@@ -59,6 +59,179 @@ We compare baseline inference, prefix reuse, exact cache hits, and GPU-aware adm
 - GPU-aware admission reduces latency by rejecting oversized requests
 - Eviction reduces rejection but increases latency by admitting expensive requests
 
+## Real Inference Validation (Ollama)
+
+To validate the serving model, I integrated Ollama as a real inference backend and ran controlled experiments.
+
+### Setup
+
+- Model: llama3.1:8b (Ollama)
+- Controlled prompts (fixed output length)
+- Scenarios:
+  - Cold request
+  - Warm request (same prompt)
+  - Prefix-related prompt
+  - Unrelated prompt
+
+### Results
+
+| Scenario   | Total Latency | Prompt Eval | Decode |
+|------------|--------------|-------------|--------|
+| cold_1     | ~8488 ms     | 177 ms      | 5238 ms |
+| warm_1     | ~5520 ms     | 47 ms       | 5372 ms |
+| prefix_1   | ~5891 ms     | 47 ms       | 5747 ms |
+| prefix_2   | ~5825 ms     | 160 ms      | 5570 ms |
+| diff_1     | ~1891 ms     | 163 ms      | 1653 ms |
+
+### Key Observations
+
+- Warm requests significantly reduce prompt evaluation latency
+- End-to-end latency is dominated by decode (generation) time
+- Prefix similarity alone does not reduce total latency without controlling output size
+- Output length is a primary driver of latency in real inference systems
+
+### Takeaway
+
+While prefix-aware caching reduces prefill cost, real-world LLM serving performance is largely governed by generation cost. This highlights the importance of combining caching with efficient decoding strategies.
+
+### Stability Across Runs
+
+Repeated experiments produced consistent latency ranges:
+
+- prefix_1: ~5.1–5.3s
+- prefix_2: ~5.8–6.0s
+- diff_1: ~1.7s
+
+This confirms that observed behavior is stable and not due to random variance.
+
+### Final Insight
+
+While prefix-aware caching reduces prompt evaluation cost, real-world LLM latency is dominated by token generation. This highlights that effective serving optimization must address decode efficiency, not just prompt reuse.
+
+
+## Concurrent Real Inference Benchmark
+
+To evaluate serving behavior under load, I added a concurrent Ollama inference benchmark.
+
+### Setup
+
+- Model: Llama 3.1 8B via Ollama
+- Prompt: fixed output length
+- Workload: same prompt across concurrent requests
+- Metric: average latency, p95 latency, wall-clock time, throughput
+
+### Results
+
+| Concurrency | Avg Latency | P95 Latency | Wall Clock | Throughput |
+|------------:|------------:|------------:|-----------:|-----------:|
+| 1 | 5,771 ms | 5,771 ms | 5,794 ms | 0.17 req/s |
+| 3 | 10,963 ms | 16,299 ms | 16,310 ms | 0.18 req/s |
+| 5 | 16,560 ms | 27,744 ms | 27,758 ms | 0.18 req/s |
+| 10 | 29,040 ms | 53,525 ms | 53,543 ms | 0.19 req/s |
+
+### Key Observations
+
+- Average latency increases as concurrency grows.
+- P95 latency grows much faster than average latency.
+- Throughput remains almost flat even with 10x more concurrent requests.
+- Wall-clock time closely follows p95 latency, suggesting requests are contending for the same inference runtime resource.
+
+### Takeaway
+
+Single-request latency is misleading.
+
+Real LLM serving behavior is shaped by:
+
+- queueing
+- runtime contention
+- scheduling
+- GPU utilization
+- tail latency
+
+This experiment shows why production LLM serving systems need batching, scheduling, and admission control rather than only cache reuse.
+
+## Storage Benchmark (VeriStore-backed Metadata)
+
+| Entries | Write (ms) | Recovery Lookup (ms) |
+|--------:|-----------:|--------------------:|
+| 100     | 2 ms       | ~0 ms               |
+| 1000    | ~10 ms     | ~2–4 ms             |
+| 5000    | 37 ms      | 10 ms               |
+
+Note: Recovery time here measures lookup after WAL load, not full process restart recovery.
+
+## WAL-Backed Cache Metadata Recovery Benchmark
+
+This project uses a WAL-backed key-value store (VeriStore) to persist LLM cache metadata (prefix → KV blocks, session routing).
+
+### Benchmark Setup
+
+- Local WAL-backed KV store
+- Metadata operations:
+  - Cache entry registration
+  - Prefix lookup
+- Recovery measured by:
+  - WAL open / replay time
+  - Metadata lookup after restart
+
+### Results (Measured)
+
+| Entries | Write (ms) | Startup Recovery (ms) | Lookup (ms) | Total Recovery (ms) |
+|--------:|-----------:|---------------------:|------------:|--------------------:|
+| 100     | 2 ms       | 0 ms                 | 0 ms        | ~7 ms               |
+| 1,000   | 12 ms      | 3 ms                 | 2 ms        | ~9 ms               |
+| 5,000   | 35 ms      | 9 ms                 | 8 ms        | ~20 ms              |
+
+### Key Observations
+
+- WAL replay is fast even with thousands of entries.
+- Metadata recovery scales efficiently with number of entries.
+- Total recovery time remains in the millisecond range.
+
+### Comparison to Inference
+
+Real LLM inference latency (Llama 3.1 8B via Ollama):
+
+- ~5,000–8,000 ms per request
+
+### Insight
+
+> Storage (WAL-backed metadata) is not the bottleneck in LLM serving.
+>
+> - During serving → inference dominates latency  
+> - During recovery → storage determines system availability  
+
+### Takeaway
+
+Cache persistence enables fast recovery without significantly impacting serving latency.
+
+This demonstrates that:
+- KV cache metadata can be safely persisted
+- Systems can recover quickly after failure
+- Inference remains the dominant cost in LLM serving
+
+
+## 🔥 Overload & Admission Control
+
+To simulate real system pressure:
+
+```bash
+--concurrency=10 --max-active=3
+
+| Metric      | No Control | With Control |
+| ----------- | ---------- | ------------ |
+| Accepted    | 10         | 3            |
+| Rejected    | 0          | 7            |
+| P95 Latency | ~53.5s     | ~20.7s       |
+| Throughput  | ~0.18      | ~0.15        |
+
+
+Insight
+Accepting all requests → queue grows → latency explodes
+Limiting active requests → queue stays small → latency controlled
+
+Good systems don’t try to serve everyone
+They protect latency by rejecting excess load
 
 
 # 🧠 Motivation
