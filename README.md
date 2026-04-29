@@ -215,7 +215,7 @@ This demonstrates that:
 
 To simulate real system pressure:
 
-```bash
+
 --concurrency=10 --max-active=3
 
 | Metric      | No Control | With Control |
